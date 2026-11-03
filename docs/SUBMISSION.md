@@ -38,14 +38,16 @@ repair reduces which kind of mismatch.
 ## Results
 See docs/RESULTS.md (filled from `runs/eval_*.json`).
 
-| Metric | Rules only | Rules + Muse |
+| Metric | Rules only | Rules + Muse Spark 1.3 |
 |---|---|---|
-| False intervention rate (neutral scenarios) | 0.00 | _TBD_ |
-| Seeded-issue detection rate (hand-authored) | 1.00 | _TBD_ |
-| Hypothesis-type accuracy | 1.00 | _TBD_ |
-| Held-out (Muse-generated) detection / false-intervention | _TBD_ | _TBD_ |
-| Interpreter latency p50 / p95 | 0 ms (templates) | _TBD_ |
+| False intervention rate, neutral scenarios (both sets) | 0.00 | 0.00 |
+| Seeded-issue detection, hand-authored (8 seeded) | 1.00 | 0.875 |
+| Seeded-issue detection, held-out Muse-generated (6 seeded) | 1.00 | 1.00 |
+| Hypothesis-type accuracy, hand-authored / held-out | 1.00 / 0.80 | 1.00 / 0.90 |
+| Interpreter latency p50 / p95 | 0 ms (templates) | 4.4 s / 6.9 s (reasoning_effort=minimal) |
 | Signal latency per turn (CPU) | ~10 ms | ~10 ms |
+| Voice Transcribe: last speech offset to final turn | 0.49 s (endpointing) / 0.61 s (diarization) | same |
+| Muse cost for the whole evaluation + fixture generation | – | ≈ $0.55 |
 
 Hand-authored fixtures were used to tune the rule detectors, so the held-out generated set is the honest number.
 
