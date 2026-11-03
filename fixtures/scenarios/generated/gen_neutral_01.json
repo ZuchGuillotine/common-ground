@@ -1,0 +1,38 @@
+{
+  "id": "gen_neutral_01",
+  "type": "neutral",
+  "goal": "understand",
+  "generated": true,
+  "setting": "contractor and homeowner",
+  "intended_message": "contractor confirms Thursday start for bathroom tile job",
+  "turns": [
+    {
+      "speaker": "wearer",
+      "text": "Hey Mark, it's Dave, here for the bathroom tile look?",
+      "t_start": 0.0,
+      "t_end": 4.0
+    },
+    {
+      "speaker": "counterpart",
+      "text": "Hey Dave, yeah come on in, bathroom's down the hall on the left.",
+      "t_start": 4.5,
+      "t_end": 9.7
+    },
+    {
+      "speaker": "wearer",
+      "text": "Got it, yeah I can patch that grout and start Thursday morning.",
+      "t_start": 10.2,
+      "t_end": 15.0
+    },
+    {
+      "speaker": "counterpart",
+      "text": "Perfect, Thursday morning works for us, see you then.",
+      "t_start": 15.5,
+      "t_end": 19.1
+    }
+  ],
+  "expect": {
+    "should_intervene": false,
+    "mismatch_type": []
+  }
+}

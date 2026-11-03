@@ -1,0 +1,45 @@
+{
+  "id": "gen_polite_confusion_01",
+  "type": "polite_confusion",
+  "goal": "explain",
+  "generated": true,
+  "setting": "two co-founders",
+  "intended_message": "We need to lock the build and only fix bugs until launch, no new features.",
+  "turns": [
+    {
+      "speaker": "wearer",
+      "text": "So for the next two weeks, we freeze features and just kill bugs before launch, right?",
+      "t_start": 0.0,
+      "t_end": 6.4
+    },
+    {
+      "speaker": "counterpart",
+      "text": "Yeah, makes sense. So should we still squeeze in that new onboarding step?",
+      "t_start": 6.9,
+      "t_end": 12.1
+    },
+    {
+      "speaker": "wearer",
+      "text": "Well no, that counts as a feature, so that would have to wait.",
+      "t_start": 12.6,
+      "t_end": 17.8
+    },
+    {
+      "speaker": "counterpart",
+      "text": "Oh got it, I thought freeze just meant no big stuff.",
+      "t_start": 18.3,
+      "t_end": 22.7
+    }
+  ],
+  "expect": {
+    "should_intervene": true,
+    "mismatch_type": [
+      "polite_confusion",
+      "term_ambiguity"
+    ],
+    "intervene_on_turn_in": [
+      1,
+      3
+    ]
+  }
+}

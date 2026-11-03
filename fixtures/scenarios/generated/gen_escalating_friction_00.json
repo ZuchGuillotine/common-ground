@@ -1,0 +1,57 @@
+{
+  "id": "gen_escalating_friction_00",
+  "type": "escalating_friction",
+  "goal": "resolve",
+  "generated": true,
+  "setting": "two friends planning a trip",
+  "intended_message": "we should just split the big Airbnb three ways with Jake because it's cheaper and easier",
+  "turns": [
+    {
+      "speaker": "wearer",
+      "text": "Okay so for Joshua Tree, I found that big place with the pool, if we split it three ways with Jake it's like ninety bucks each for the weekend.",
+      "t_start": 0.0,
+      "t_end": 11.6
+    },
+    {
+      "speaker": "counterpart",
+      "text": "Wait, so are we splitting the Airbnb three ways or am I booking mine separate?",
+      "t_start": 12.1,
+      "t_end": 18.1
+    },
+    {
+      "speaker": "wearer",
+      "text": "Splitting it, man. Like I said, it's three bedrooms, me, you, and Jake, we just split the total evenly, it comes out way cheaper than getting separate rooms.",
+      "t_start": 18.6,
+      "t_end": 29.8
+    },
+    {
+      "speaker": "counterpart",
+      "text": "Okay but are we splitting it three ways?",
+      "t_start": 30.3,
+      "t_end": 33.5
+    },
+    {
+      "speaker": "wearer",
+      "text": "Yeah, that's what I'm saying. I already checked with Jake, he's in. I can put it on my card and you guys just Venmo me your third, it's like ninety each plus cleaning, super simple.",
+      "t_start": 34.0,
+      "t_end": 48.0
+    },
+    {
+      "speaker": "counterpart",
+      "text": "So splitting it?",
+      "t_start": 48.5,
+      "t_end": 49.7
+    }
+  ],
+  "expect": {
+    "should_intervene": true,
+    "mismatch_type": [
+      "escalating_friction",
+      "unanswered_objection"
+    ],
+    "intervene_on_turn_in": [
+      3,
+      5
+    ]
+  }
+}

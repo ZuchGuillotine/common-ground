@@ -28,9 +28,8 @@ from .models import DEFAULT_TRANSCRIBE_MODEL, REALTIME_ASR_URL
 PCM_16KHZ_BYTES_PER_SEC = 32_000   # 16 kHz * 2 bytes, mono
 HANDSHAKE_TIMEOUT_S = 10.0
 
-# UNVERIFIED (no API key in the authoring session): the docs say `speaker.label` is a bare letter
-# such as "A"; we map labels to "S0", "S1", ... in first-seen order. If labels turn out to be
-# something else (e.g. "SPEAKER_00"), only this normaliser needs to change.
+# VERIFIED LIVE 2026-11-03 (two-voice synthetic clip): `speaker.label` is a bare letter, "A" then "B",
+# alternating per turn; we map labels to "S0", "S1", ... in first-seen order.
 def normalise_speaker_label(label: str, seen: dict[str, str]) -> str:
     return seen.setdefault(str(label), f"S{len(seen)}")
 
@@ -65,17 +64,25 @@ class TranscriptNormaliser:
         tid = raw.get("turnId")
         out: list[TranscriptEvent] = []
         if kind == "speechStart":
+            # VERIFIED: `audioProcessedMs` here is the speech onset (60 ms for audio starting at t=0), not
+            # the amount of audio processed; likewise speechEnd carries the true offset (~500 ms before the
+            # processing position reported by the speaker/partial events). t_start/t_end are therefore exact.
             self.current = self.turns[tid] = _Turn(tid, t_start=t, speaker=self.last_speaker)
         elif kind == "transcript":
-            turn = self._turn_for(tid)
             text = str(raw.get("transcript", ""))
+            if raw.get("final") and not text.strip() and self.current is None:
+                # VERIFIED: after endStream the server sends {"type":"transcript","final":true,"transcript":""}
+                # in every mode (also ENDPOINTING/DIARIZATION) as an end-of-stream marker, right before it
+                # closes with 1000 "No more transcript segments". It is not a turn; ignore it.
+                return out
+            turn = self._turn_for(tid)
             turn.partial = text
             if raw.get("final"):   # PUSH_TO_TALK completion signal
                 turn.t_end = t
                 out += self._finish(turn, text, raw)
             else:
                 out.append(TranscriptEvent("partial", text, turn.speaker, turn.t_start, t, turn.turn_id, raw))
-        elif kind == "speaker":    # labels the span that preceded this event
+        elif kind == "speaker":    # VERIFIED order: speechStart, partials, speaker, speechEnd, speechComplete
             label = normalise_speaker_label(raw.get("label", "?"), self.speakers)
             turn = self._turn_for(tid)
             turn.speaker = label

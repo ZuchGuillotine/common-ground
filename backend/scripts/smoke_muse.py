@@ -62,10 +62,11 @@ async def smoke_transcribe(path: str, mode: str) -> None:
 
         sender = asyncio.create_task(pump())
         last_final_at: float | None = None
+        last_final_t_end: float | None = None
         async for ev in t.events():
             now = time.monotonic() - t_wall0
             if ev.kind == "final":
-                last_final_at = time.monotonic()
+                last_final_at, last_final_t_end = time.monotonic(), ev.t_end
             if ev.kind == "partial":
                 print(f"\r[{now:7.2f}s] {ev.speaker_label or '--'} ~ {ev.text[:90]:<90}", end="", flush=True)
             else:
@@ -73,7 +74,11 @@ async def smoke_transcribe(path: str, mode: str) -> None:
                 print(f"\n[{now:7.2f}s] {ev.kind:14} {ev.speaker_label or '--':3} {span:14} {ev.text}")
         await sender
     if t.t_last_audio and last_final_at:
-        print(f"\nlatency last-audio-byte -> last final: {(last_final_at - t.t_last_audio) * 1000:.0f} ms")
+        print(f"\nlatency last-audio-byte -> last final: {(last_final_at - t.t_last_audio) * 1000:.0f} ms"
+              "  (negative = the last turn finalised before trailing silence finished streaming)")
+        if last_final_t_end is not None:   # wall time at which the audio position t_end was sent (paced replay)
+            sent_at = t.t_last_audio - (len(pcm) / PCM_16KHZ_BYTES_PER_SEC - last_final_t_end)
+            print(f"latency last-speech-offset -> last final: {(last_final_at - sent_at) * 1000:.0f} ms")
     else:
         print("\nno final transcript received")
 

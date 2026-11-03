@@ -1,0 +1,45 @@
+{
+  "id": "gen_polite_confusion_00",
+  "type": "polite_confusion",
+  "goal": "explain",
+  "generated": true,
+  "setting": "software vendor sales call",
+  "intended_message": "Counterpart appears to agree with per-user pricing but reveals they think one seat can be shared across the team",
+  "turns": [
+    {
+      "speaker": "wearer",
+      "text": "So just to recap, it's named seats on the Team plan, so everyone who logs in needs their own seat to access the workspace.",
+      "t_start": 0.0,
+      "t_end": 9.6
+    },
+    {
+      "speaker": "counterpart",
+      "text": "Okay, gotcha, per person, yeah.",
+      "t_start": 10.1,
+      "t_end": 12.1
+    },
+    {
+      "speaker": "wearer",
+      "text": "Exactly. And if someone leaves you can deactivate them and reassign that seat to someone else for free.",
+      "t_start": 12.6,
+      "t_end": 19.8
+    },
+    {
+      "speaker": "counterpart",
+      "text": "Yeah, makes sense. So could we just get like two seats and have the whole support team share the logins for those?",
+      "t_start": 20.3,
+      "t_end": 29.1
+    }
+  ],
+  "expect": {
+    "should_intervene": true,
+    "mismatch_type": [
+      "polite_confusion",
+      "term_ambiguity"
+    ],
+    "intervene_on_turn_in": [
+      3,
+      5
+    ]
+  }
+}

@@ -168,7 +168,11 @@ async def test_muse_chat_request_shape_and_retry(monkeypatch):
     assert str(req.url) == "https://api.meta.ai/v1/chat/completions"
     assert req.headers["Authorization"] == "Bearer LLM_1_test"
     body = json.loads(req.content)
-    assert body["model"] == MUSE_SPARK_1_3 and body["max_completion_tokens"] == 32 and "temperature" not in body
+    # verified live: reasoning tokens share max_completion_tokens, so the client adds headroom + reasoning_effort
+    from common_ground.muse.chat import DEFAULT_REASONING_EFFORT, REASONING_HEADROOM_TOKENS
+    assert body["model"] == MUSE_SPARK_1_3 and "temperature" not in body
+    assert body["max_completion_tokens"] == 32 + REASONING_HEADROOM_TOKENS
+    assert body["reasoning_effort"] == DEFAULT_REASONING_EFFORT
     assert body["response_format"] == {"type": "json_schema", "json_schema": {"name": "Answer", "schema": schema}}
     assert (chat.usage.input_tokens, chat.usage.output_tokens, chat.usage.calls) == (10, 5, 1)
     assert chat.usage.cost_usd == pytest.approx((10 * 1.25 + 5 * 4.25) / 1e6)
@@ -193,3 +197,38 @@ def test_muse_chat_requires_key(monkeypatch):
     monkeypatch.delenv("MODEL_API_KEY", raising=False)
     with pytest.raises(MuseChatError, match="LLAMA_API_KEY"):
         MuseChat()
+
+
+async def test_muse_chat_budget_exhausted_by_reasoning_retries_minimal_then_errors():
+    # verified live: finish_reason="length" with content=null when reasoning eats the whole budget
+    from common_ground.muse.chat import REASONING_HEADROOM_TOKENS
+    bodies: list[dict] = []
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        bodies.append(json.loads(req.content))
+        return httpx.Response(200, json={
+            "choices": [{"index": 0, "message": {"role": "assistant", "content": None}, "finish_reason": "length"}],
+            "usage": {"prompt_tokens": 15, "completion_tokens": 64, "total_tokens": 79,
+                      "completion_tokens_details": {"reasoning_tokens": 62}}})
+
+    chat = MuseChat(api_key="k", reasoning_effort="low",
+                    client=httpx.AsyncClient(transport=httpx.MockTransport(handler)))
+    with pytest.raises(MuseChatError, match="budget exhausted"):
+        await chat.complete([{"role": "user", "content": "hi"}], max_tokens=64)
+    assert [b["reasoning_effort"] for b in bodies] == ["low", "minimal"]
+    assert bodies[0]["max_completion_tokens"] == 64 + REASONING_HEADROOM_TOKENS
+    assert bodies[1]["max_completion_tokens"] == 2 * (64 + REASONING_HEADROOM_TOKENS)
+    assert chat.usage.calls == 2   # both attempts are billed
+
+
+def test_normaliser_ignores_end_of_stream_final_marker():
+    # verified live: after endStream the server sends an empty transcript{final:true} in every mode
+    from common_ground.muse.transcribe import TranscriptNormaliser
+    n = TranscriptNormaliser()
+    n.feed({"type": "speechStart", "audioProcessedMs": 60, "turnId": 0})
+    n.feed({"type": "transcript", "transcript": " hi", "final": False, "audioProcessedMs": 800})
+    n.feed({"type": "speaker", "label": "A", "audioProcessedMs": 1200})
+    n.feed({"type": "speechEnd", "audioProcessedMs": 700, "turnId": 0})
+    evs = n.feed({"type": "speechComplete", "audioProcessedMs": 700, "turnId": 0, "transcript": " hi "})
+    assert [e.kind for e in evs] == ["final", "turn_end"] and evs[0].speaker_label == "S0"
+    assert n.feed({"type": "transcript", "transcript": "", "final": True, "audioProcessedMs": 1300}) == []

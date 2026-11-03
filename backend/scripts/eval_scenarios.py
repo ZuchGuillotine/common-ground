@@ -25,6 +25,23 @@ from common_ground.signals import LinguisticDetector
 FIX = Path(__file__).resolve().parents[2] / "fixtures" / "scenarios"
 
 
+class _Timed:
+    """Measures interpreter latency on the wall clock. (The Coach times calls with its injected clock, which
+    during replay is the scripted conversation clock and does not advance inside a call.)"""
+    def __init__(self, inner):
+        self.inner, self.latencies = inner, []
+
+    async def interpret(self, *a, **k):
+        t0 = time.monotonic()
+        try:
+            return await self.inner.interpret(*a, **k)
+        finally:
+            self.latencies.append(time.monotonic() - t0)
+
+    def __getattr__(self, name):
+        return getattr(self.inner, name)
+
+
 async def run_one(sc: dict, interp, text_emotion, min_gap: float) -> dict:
     cfg = SessionConfig(session_id=sc["id"], goal=SessionGoal(sc.get("goal", "explain")),
                         intended_message=sc.get("intended_message"), min_seconds_between_cues=min_gap,
@@ -80,15 +97,17 @@ async def main():
     ap.add_argument("--min-gap", type=float, default=0.0, help="min seconds between cues (0 = score every nomination)")
     ap.add_argument("--only", default=None)
     ap.add_argument("--out", default=None)
+    ap.add_argument("--dir", default=None, help="scenario directory (default: fixtures/scenarios; "
+                                                "e.g. fixtures/scenarios/generated for the held-out set)")
     a = ap.parse_args()
 
     if a.muse:
         if not os.environ.get("LLAMA_API_KEY"):
             sys.exit("--muse requires LLAMA_API_KEY")
         from common_ground.muse import MuseChat
-        interp = Interpreter(MuseChat())
+        interp = _Timed(Interpreter(MuseChat()))
     else:
-        interp = FallbackInterpreter()
+        interp = _Timed(FallbackInterpreter())
     te = None
     if not a.no_text_emotion:
         try:
@@ -97,7 +116,7 @@ async def main():
         except Exception as e:
             print(f"[warn] text emotion unavailable: {e}")
 
-    files = sorted(FIX.glob("*.json"))
+    files = sorted((Path(a.dir) if a.dir else FIX).glob("*.json"))
     if a.only:
         files = [f for f in files if a.only in f.name]
     results = [await run_one(json.loads(f.read_text()), interp, te, a.min_gap) for f in files]
@@ -112,15 +131,19 @@ async def main():
         "type_accuracy": round(sum(not any(f.startswith("wrong_type") or f.startswith("forbidden_type") for f in r["failures"])
                                    for r in results if r["intervened"]) / max(1, sum(r["intervened"] for r in results)), 3),
         "scenarios_with_failures": sum(bool(r["failures"]) for r in results),
-        "interpret_p50_s": _pct([l for r in results for l in r["metrics"].get("interpret_latency_s", [])] or
-                                [r["metrics"]["interpret_p50_s"] for r in results if r["metrics"]["interpret_p50_s"]], 0.5),
-        "interpret_p95_s": _pct([r["metrics"]["interpret_p95_s"] for r in results if r["metrics"]["interpret_p95_s"]], 0.95),
+        "interpret_calls": len(interp.latencies),
+        "interpret_p50_s": _pct(interp.latencies, 0.5),
+        "interpret_p95_s": _pct(interp.latencies, 0.95),
     }
     w = max(len(r["id"]) for r in results)
     for r in results:
         flag = "OK " if not r["failures"] else "XX "
         cue = f'{r["hyp_type"]} / {r["strategy"]} @#{r["first_turn"]}: "{r["cue"]}"' if r["intervened"] else "silent"
         print(f'{flag}{r["id"]:<{w}}  {cue}' + (f'   <- {", ".join(r["failures"])}' if r["failures"] else ""))
+    if a.muse:   # UsageMeter: tokens and estimated USD for this run
+        u = interp.chat.usage
+        summary["muse_usage"] = {"calls": u.calls, "input_tokens": u.input_tokens,
+                                 "output_tokens": u.output_tokens, "cost_usd": round(u.cost_usd, 5)}
     print("\n" + json.dumps(summary, indent=2))
     if a.out:
         Path(a.out).parent.mkdir(parents=True, exist_ok=True)
