@@ -1,0 +1,34 @@
+{
+  "id": "genuine_disagreement_02",
+  "type": "genuine_disagreement",
+  "goal": "resolve",
+  "intended_message": "Agree on a release date.",
+  "turns": [
+    {
+      "speaker": "wearer",
+      "text": "I want to ship on the fifteenth even if the reporting feature isn't done.",
+      "t_start": 0,
+      "t_end": 4
+    },
+    {
+      "speaker": "counterpart",
+      "text": "I get the reasoning, but no. Shipping without reporting breaks the promise we made to the pilot customers.",
+      "t_start": 4.5,
+      "t_end": 11
+    }
+  ],
+  "expect": {
+    "should_intervene": "either",
+    "mismatch_type": [
+      "genuine_disagreement",
+      "none"
+    ],
+    "must_not_be": [
+      "polite_confusion",
+      "term_ambiguity"
+    ],
+    "strategy_not_in": [
+      "clarify_definition"
+    ]
+  }
+}

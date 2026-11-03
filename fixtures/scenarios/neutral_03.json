@@ -1,0 +1,29 @@
+{
+  "id": "neutral_03",
+  "type": "neutral",
+  "goal": "negotiate",
+  "intended_message": "Agree on a handover date.",
+  "turns": [
+    {
+      "speaker": "wearer",
+      "text": "Could we do the handover on Thursday instead of Wednesday?",
+      "t_start": 0,
+      "t_end": 3
+    },
+    {
+      "speaker": "counterpart",
+      "text": "Thursday is actually better for me, let's do that.",
+      "t_start": 3.5,
+      "t_end": 6
+    },
+    {
+      "speaker": "wearer",
+      "text": "Great, I'll update the invite.",
+      "t_start": 6.5,
+      "t_end": 8
+    }
+  ],
+  "expect": {
+    "should_intervene": false
+  }
+}

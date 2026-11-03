@@ -1,0 +1,31 @@
+{
+  "id": "jargon_01",
+  "type": "term_ambiguity",
+  "goal": "explain",
+  "intended_message": "They should understand what the retention policy does.",
+  "turns": [
+    {
+      "speaker": "wearer",
+      "text": "We'd put the logs behind a retention policy so the audit team can still query the last ninety days.",
+      "t_start": 0,
+      "t_end": 6
+    },
+    {
+      "speaker": "counterpart",
+      "text": "Wait, what do you mean by retention policy? Does that delete things?",
+      "t_start": 6.5,
+      "t_end": 10
+    }
+  ],
+  "expect": {
+    "should_intervene": true,
+    "mismatch_type": [
+      "term_ambiguity"
+    ],
+    "intervene_on_turn": 1,
+    "strategy_in": [
+      "clarify_definition",
+      "ask_check_question"
+    ]
+  }
+}

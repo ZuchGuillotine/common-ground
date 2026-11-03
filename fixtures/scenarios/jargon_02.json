@@ -1,0 +1,27 @@
+{
+  "id": "jargon_02",
+  "type": "term_ambiguity",
+  "goal": "explain",
+  "intended_message": "The escrow protects both sides.",
+  "turns": [
+    {
+      "speaker": "wearer",
+      "text": "The funds sit in escrow until both of us sign off, so neither side is exposed.",
+      "t_start": 0,
+      "t_end": 5
+    },
+    {
+      "speaker": "counterpart",
+      "text": "Sorry, escrow? How does that work exactly?",
+      "t_start": 5.5,
+      "t_end": 8
+    }
+  ],
+  "expect": {
+    "should_intervene": true,
+    "mismatch_type": [
+      "term_ambiguity"
+    ],
+    "intervene_on_turn": 1
+  }
+}

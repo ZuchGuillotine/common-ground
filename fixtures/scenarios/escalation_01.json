@@ -1,0 +1,66 @@
+{
+  "id": "escalation_01",
+  "type": "escalating_friction",
+  "goal": "resolve",
+  "intended_message": "Explain why the invoice is higher than quoted.",
+  "turns": [
+    {
+      "speaker": "wearer",
+      "text": "The invoice is higher because the scope changed in week two when you asked for the extra reports, and those took additional engineering time that wasn't in the original estimate.",
+      "t_start": 0,
+      "t_end": 10
+    },
+    {
+      "speaker": "counterpart",
+      "text": "But why is it higher?",
+      "t_start": 10.5,
+      "t_end": 12
+    },
+    {
+      "speaker": "wearer",
+      "text": "Right, so as I said, the extra reports you asked for in week two were outside the original scope, and the hours for those are what you're seeing added on the bottom line here.",
+      "t_start": 12.5,
+      "t_end": 22
+    },
+    {
+      "speaker": "counterpart",
+      "text": "I'm asking why it's higher than what you quoted.",
+      "t_start": 22.5,
+      "t_end": 25
+    },
+    {
+      "speaker": "wearer",
+      "text": "Because the scope changed. The reports were new work, so the quote no longer covered everything, which is why the number went up relative to the original.",
+      "t_start": 25.5,
+      "t_end": 33
+    },
+    {
+      "speaker": "counterpart",
+      "text": "Fine.",
+      "t_start": 33.5,
+      "t_end": 34
+    }
+  ],
+  "expect": {
+    "should_intervene": true,
+    "mismatch_type": [
+      "escalating_friction",
+      "unanswered_objection"
+    ],
+    "intervene_on_turn_in": [
+      3,
+      5
+    ],
+    "strategy_not_in": [
+      "clarify_definition"
+    ],
+    "strategy_in": [
+      "slow_down",
+      "label_emotion",
+      "mirror",
+      "acknowledge_objection",
+      "ask_check_question",
+      "switch_frame"
+    ]
+  }
+}

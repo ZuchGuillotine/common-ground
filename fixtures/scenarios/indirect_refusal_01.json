@@ -1,0 +1,49 @@
+{
+  "id": "indirect_refusal_01",
+  "type": "indirect_refusal",
+  "goal": "negotiate",
+  "intended_message": "I want a decision on the Friday start date.",
+  "turns": [
+    {
+      "speaker": "wearer",
+      "text": "Can we lock in Friday as the start date?",
+      "t_start": 0,
+      "t_end": 2
+    },
+    {
+      "speaker": "counterpart",
+      "text": "Friday might be difficult.",
+      "t_start": 2.5,
+      "t_end": 4
+    },
+    {
+      "speaker": "wearer",
+      "text": "It really helps us with the schedule.",
+      "t_start": 4.5,
+      "t_end": 6.5
+    },
+    {
+      "speaker": "counterpart",
+      "text": "I'll see what I can do.",
+      "t_start": 7,
+      "t_end": 8.5
+    }
+  ],
+  "expect": {
+    "should_intervene": true,
+    "mismatch_type": [
+      "indirect_refusal"
+    ],
+    "intervene_on_turn_in": [
+      1,
+      3
+    ],
+    "must_not_be": [
+      "polite_confusion",
+      "term_ambiguity"
+    ],
+    "strategy_not_in": [
+      "clarify_definition"
+    ]
+  }
+}

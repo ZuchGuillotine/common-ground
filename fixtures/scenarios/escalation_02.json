@@ -1,0 +1,47 @@
+{
+  "id": "escalation_02",
+  "type": "escalating_friction",
+  "goal": "resolve",
+  "intended_message": "Get agreement on who owns the on-call rota.",
+  "turns": [
+    {
+      "speaker": "wearer",
+      "text": "I think platform should own the on-call rota because they already own the alerting and the runbooks, and it would be cleaner to have one team accountable end to end rather than splitting it.",
+      "t_start": 0,
+      "t_end": 10
+    },
+    {
+      "speaker": "counterpart",
+      "text": "No.",
+      "t_start": 10.5,
+      "t_end": 11
+    },
+    {
+      "speaker": "wearer",
+      "text": "I mean it just makes sense operationally, because otherwise we have two teams and nobody knows who's paged, and that's exactly the problem we had last quarter with the outage.",
+      "t_start": 11.5,
+      "t_end": 20
+    },
+    {
+      "speaker": "counterpart",
+      "text": "We've been over this.",
+      "t_start": 20.5,
+      "t_end": 22
+    }
+  ],
+  "expect": {
+    "should_intervene": true,
+    "mismatch_type": [
+      "escalating_friction",
+      "genuine_disagreement",
+      "unanswered_objection"
+    ],
+    "intervene_on_turn_in": [
+      1,
+      3
+    ],
+    "strategy_not_in": [
+      "clarify_definition"
+    ]
+  }
+}

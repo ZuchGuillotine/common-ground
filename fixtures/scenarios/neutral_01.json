@@ -1,0 +1,35 @@
+{
+  "id": "neutral_01",
+  "type": "neutral",
+  "goal": "explain",
+  "intended_message": "Agree on lunch.",
+  "turns": [
+    {
+      "speaker": "wearer",
+      "text": "Want to grab lunch at the Thai place around one?",
+      "t_start": 0,
+      "t_end": 3
+    },
+    {
+      "speaker": "counterpart",
+      "text": "Yeah, one works. I'll meet you downstairs.",
+      "t_start": 3.5,
+      "t_end": 6
+    },
+    {
+      "speaker": "wearer",
+      "text": "Perfect, see you then.",
+      "t_start": 6.5,
+      "t_end": 8
+    },
+    {
+      "speaker": "counterpart",
+      "text": "See you.",
+      "t_start": 8.5,
+      "t_end": 9
+    }
+  ],
+  "expect": {
+    "should_intervene": false
+  }
+}

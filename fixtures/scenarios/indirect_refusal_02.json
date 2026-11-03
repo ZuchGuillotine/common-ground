@@ -1,0 +1,30 @@
+{
+  "id": "indirect_refusal_02",
+  "type": "indirect_refusal",
+  "goal": "negotiate",
+  "intended_message": "I'd like them to commit to the budget.",
+  "turns": [
+    {
+      "speaker": "wearer",
+      "text": "So are we good to approve the forty thousand for the pilot?",
+      "t_start": 0,
+      "t_end": 3
+    },
+    {
+      "speaker": "counterpart",
+      "text": "Let me think about it and get back to you.",
+      "t_start": 3.5,
+      "t_end": 6
+    }
+  ],
+  "expect": {
+    "should_intervene": true,
+    "mismatch_type": [
+      "indirect_refusal"
+    ],
+    "intervene_on_turn": 1,
+    "strategy_not_in": [
+      "clarify_definition"
+    ]
+  }
+}

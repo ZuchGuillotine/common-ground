@@ -1,0 +1,36 @@
+{
+  "id": "genuine_disagreement_01",
+  "type": "genuine_disagreement",
+  "goal": "negotiate",
+  "intended_message": "Convince them the price is fair.",
+  "turns": [
+    {
+      "speaker": "wearer",
+      "text": "The price reflects the extra year of support bundled in, so you're not paying for licences twice.",
+      "t_start": 0,
+      "t_end": 6
+    },
+    {
+      "speaker": "counterpart",
+      "text": "I understand that, and I still don't think it's worth it for us. We don't need the support year.",
+      "t_start": 6.5,
+      "t_end": 12
+    }
+  ],
+  "expect": {
+    "should_intervene": "either",
+    "mismatch_type": [
+      "genuine_disagreement",
+      "none"
+    ],
+    "must_not_be": [
+      "polite_confusion",
+      "term_ambiguity",
+      "unanswered_objection"
+    ],
+    "strategy_not_in": [
+      "clarify_definition",
+      "ask_check_question"
+    ]
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "id": "same_words_01",
+  "type": "tone_dependent",
+  "goal": "understand",
+  "intended_message": "Check how my offer landed.",
+  "turns": [
+    {
+      "speaker": "wearer",
+      "text": "I can do the whole thing by Friday if you want.",
+      "t_start": 0,
+      "t_end": 3
+    },
+    {
+      "speaker": "counterpart",
+      "text": "Sure, that's fine.",
+      "t_start": 3.5,
+      "t_end": 5
+    }
+  ],
+  "expect": {
+    "should_intervene": "either",
+    "note": "Identical words; the audio variant (fixtures/audio/same_words_01_{warm,flat}.wav) decides. Text-only must NOT intervene.",
+    "text_only_should_intervene": false
+  }
+}

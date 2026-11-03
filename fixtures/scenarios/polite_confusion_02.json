@@ -1,0 +1,42 @@
+{
+  "id": "polite_confusion_02",
+  "type": "polite_confusion",
+  "goal": "explain",
+  "intended_message": "The deposit is refundable if they cancel 48 hours ahead.",
+  "turns": [
+    {
+      "speaker": "wearer",
+      "text": "The deposit is fully refundable as long as you cancel at least forty-eight hours before the booking.",
+      "t_start": 0,
+      "t_end": 6
+    },
+    {
+      "speaker": "counterpart",
+      "text": "Okay, got it.",
+      "t_start": 6.5,
+      "t_end": 7.5
+    },
+    {
+      "speaker": "wearer",
+      "text": "And we'll email the confirmation tonight.",
+      "t_start": 8,
+      "t_end": 10
+    },
+    {
+      "speaker": "counterpart",
+      "text": "Okay. And if I cancel the day before, I just lose the deposit, right?",
+      "t_start": 10.5,
+      "t_end": 14
+    }
+  ],
+  "expect": {
+    "should_intervene": true,
+    "mismatch_type": [
+      "polite_confusion"
+    ],
+    "intervene_on_turn": 3,
+    "must_not_be": [
+      "genuine_disagreement"
+    ]
+  }
+}

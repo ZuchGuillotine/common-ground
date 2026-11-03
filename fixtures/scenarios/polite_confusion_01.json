@@ -1,0 +1,43 @@
+{
+  "id": "polite_confusion_01",
+  "type": "polite_confusion",
+  "goal": "explain",
+  "intended_message": "I'm offering an integration with their tools, not a replacement.",
+  "turns": [
+    {
+      "speaker": "wearer",
+      "text": "So the way this works is we integrate with your existing workflow. Your team keeps using the same tools and we sit alongside them.",
+      "t_start": 0,
+      "t_end": 8
+    },
+    {
+      "speaker": "counterpart",
+      "text": "Yeah, that makes sense.",
+      "t_start": 8.5,
+      "t_end": 9.5
+    },
+    {
+      "speaker": "wearer",
+      "text": "Great. The rollout usually takes about two weeks.",
+      "t_start": 10,
+      "t_end": 13
+    },
+    {
+      "speaker": "counterpart",
+      "text": "Sure. So would we have to replace everything we have now?",
+      "t_start": 13.5,
+      "t_end": 17
+    }
+  ],
+  "expect": {
+    "should_intervene": true,
+    "mismatch_type": [
+      "polite_confusion",
+      "term_ambiguity"
+    ],
+    "intervene_on_turn": 3,
+    "must_not_be": [
+      "genuine_disagreement"
+    ]
+  }
+}

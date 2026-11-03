@@ -1,0 +1,35 @@
+{
+  "id": "neutral_02",
+  "type": "neutral",
+  "goal": "understand",
+  "intended_message": "Understand what blocked the deploy.",
+  "turns": [
+    {
+      "speaker": "wearer",
+      "text": "What ended up blocking the deploy yesterday?",
+      "t_start": 0,
+      "t_end": 2.5
+    },
+    {
+      "speaker": "counterpart",
+      "text": "The migration took longer than we expected because the index rebuild locked the table for about twenty minutes. We rolled forward once it finished.",
+      "t_start": 3,
+      "t_end": 12
+    },
+    {
+      "speaker": "wearer",
+      "text": "Got it, so nothing we need to change for next time?",
+      "t_start": 12.5,
+      "t_end": 15
+    },
+    {
+      "speaker": "counterpart",
+      "text": "Just schedule big migrations outside peak hours. I added a note to the runbook.",
+      "t_start": 15.5,
+      "t_end": 20
+    }
+  ],
+  "expect": {
+    "should_intervene": false
+  }
+}
