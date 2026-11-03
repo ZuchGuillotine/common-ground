@@ -76,6 +76,17 @@ struct Turn: Codable, Identifiable {
         case isFinal = "is_final"
         case coachingOverlap = "coaching_overlap"
     }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        turnId = try c.decode(Int.self, forKey: .turnId)
+        speaker = try c.decodeIfPresent(Speaker.self, forKey: .speaker) ?? .unknown
+        text = try c.decodeIfPresent(String.self, forKey: .text) ?? ""
+        tStart = try c.decodeIfPresent(Double.self, forKey: .tStart) ?? 0
+        tEnd = try c.decodeIfPresent(Double.self, forKey: .tEnd) ?? tStart
+        isFinal = try c.decodeIfPresent(Bool.self, forKey: .isFinal) ?? true
+        coachingOverlap = try c.decodeIfPresent(Bool.self, forKey: .coachingOverlap) ?? false
+    }
 }
 
 // MARK: - Interpretation

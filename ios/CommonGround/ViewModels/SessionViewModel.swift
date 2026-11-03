@@ -84,9 +84,10 @@ final class SessionViewModel {
             return
         }
 
-        // Audio route first (A2DP to glasses for cues; see docs/WEARABLES_SDK.md gotcha 4).
+        // Audio route first (see docs/WEARABLES_SDK.md gotcha 4). Both input modes use A2DP for
+        // cue output: in glasses mode the mic comes from the DAT camera stream, not from HFP.
         do {
-            try (inputMode == .glasses ? AudioRouting.phoneMicGlassesSpeaker : .phoneMicGlassesSpeaker).activate()
+            try AudioRouting.phoneMicGlassesSpeaker.activate()
         } catch {
             errorText = "Audio session: \(error.localizedDescription)"
         }
@@ -100,8 +101,8 @@ final class SessionViewModel {
             case .disconnected: "Not connected"
             }
         }
-        socket.onConnected = { [weak self] in
-            guard let self, let config = self.config else { return }
+        socket.onConnected = { [weak self, weak socket] in
+            guard let self, let socket, let config = self.config else { return }
             Task { await socket.send(.start(config)) }
         }
         socket.connect()

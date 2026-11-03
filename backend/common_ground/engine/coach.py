@@ -114,9 +114,8 @@ class Coach:
         self._last_cue_at = now
         self.metrics.cues += 1
         await self._set_state(CoachState.REPAIR_SUGGESTED)
-        await self.emit("cue", {"earpiece_cue": iv.earpiece_cue, "suggestion": iv.suggestion,
-                                "strategy": iv.strategy.value, "hypothesis": hyp.model_dump(mode="json"),
-                                "success_test": iv.success_test, "turn_id": turn.turn_id})
+        await self.emit("cue", {**iv.model_dump(mode="json"), "hypothesis": hyp.model_dump(mode="json"),
+                                "turn_id": turn.turn_id})
         ev = self.graph.record(turn, CoachState.AWAITING_RESPONSE, interpretation=hyp, intervention=iv, outcome="pending")
         await self._set_state(CoachState.AWAITING_RESPONSE)
         return ev

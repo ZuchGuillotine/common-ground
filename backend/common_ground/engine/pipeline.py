@@ -82,7 +82,7 @@ class Pipeline:
         """ev: muse.transcribe.TranscriptEvent (duck-typed: kind, text, speaker_label, t_start, t_end)."""
         if ev.kind == "partial":
             self._partials[ev.speaker_label or "?"] = ev.text
-            await self.coach.emit("transcript", {"speaker": self.map_speaker(ev.speaker_label), "text": ev.text, "final": False})
+            await self.coach.emit("transcript", {"speaker": self.map_speaker(ev.speaker_label), "text": ev.text, "is_final": False})
             return None
         if ev.kind in ("final", "turn_end") and ev.text and ev.text.strip():
             self._partials.pop(ev.speaker_label or "?", None)

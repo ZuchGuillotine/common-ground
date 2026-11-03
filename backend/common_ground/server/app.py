@@ -132,15 +132,15 @@ async def ws_session(ws: WebSocket):
             try:
                 cm = ClientMessage.model_validate_json(msg.get("text") or "{}")
             except Exception as e:
-                await emit("error", {"error": f"bad message: {e}"}); continue
+                await emit("error", {"message": f"bad message: {e}"}); continue
 
             if cm.type == "start":
                 cfg = cm.config or cfg
                 if not cfg.consent_confirmed:
-                    await emit("error", {"error": "consent_confirmed must be true to start"}); continue
+                    await emit("error", {"message": "consent_confirmed must be true to start"}); continue
                 await start(cfg)
             elif pipe is None or coach is None:
-                await emit("error", {"error": "send start first"})
+                await emit("error", {"message": "send start first"})
             elif cm.type == "text_turn" and cm.text_turn:
                 tt = cm.text_turn
                 await pipe.on_text_turn(tt.get("speaker", "unknown"), tt["text"],
