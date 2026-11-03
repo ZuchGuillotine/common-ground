@@ -7,7 +7,11 @@ import numpy as np
 import pytest
 
 from common_ground.schema import Turn
-from common_ground.signals import AcousticExtractor, LinguisticDetector, TextEmotionClassifier
+from common_ground.signals import (
+    AcousticExtractor,
+    LinguisticDetector,
+    TextEmotionClassifier,
+)
 
 
 # ------------------------------------------------------------------- helpers

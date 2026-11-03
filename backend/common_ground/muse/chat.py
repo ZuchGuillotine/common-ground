@@ -11,7 +11,7 @@ import json
 import os
 import random
 import re
-from typing import Any
+from typing import Any, Self
 
 import httpx
 
@@ -89,7 +89,7 @@ class MuseChat:
     async def aclose(self) -> None:
         await self._client.aclose()
 
-    async def __aenter__(self) -> "MuseChat":
+    async def __aenter__(self) -> Self:
         return self
 
     async def __aexit__(self, *exc: object) -> None:

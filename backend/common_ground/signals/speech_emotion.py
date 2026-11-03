@@ -7,7 +7,6 @@ it raises a clear error. The output is evidence, not a verdict: never let it ove
 from __future__ import annotations
 
 import os
-from typing import Optional
 
 import numpy as np
 
@@ -19,7 +18,7 @@ _TARGET_SR = 16000
 
 
 class SpeechEmotionClassifier:
-    def __init__(self, repo_id: str = REPO_ID, threads: Optional[int] = None) -> None:
+    def __init__(self, repo_id: str = REPO_ID, threads: int | None = None) -> None:
         self.repo_id = repo_id
         self.threads = threads or min(4, os.cpu_count() or 1)
         self._model = None
@@ -31,7 +30,10 @@ class SpeechEmotionClassifier:
             return
         try:
             import torch
-            from transformers import AutoFeatureExtractor, AutoModelForAudioClassification
+            from transformers import (
+                AutoFeatureExtractor,
+                AutoModelForAudioClassification,
+            )
         except ImportError as e:  # pragma: no cover - depends on the environment
             raise ImportError(
                 "SpeechEmotionClassifier needs torch + transformers. Install with "
@@ -63,7 +65,7 @@ class SpeechEmotionClassifier:
 
 
 def _resample_linear(x: np.ndarray, sr_in: int, sr_out: int) -> np.ndarray:
-    n_out = int(round(len(x) * sr_out / sr_in))
+    n_out = round(len(x) * sr_out / sr_in)
     t_in = np.linspace(0.0, 1.0, num=len(x), endpoint=False)
     t_out = np.linspace(0.0, 1.0, num=n_out, endpoint=False)
     return np.interp(t_out, t_in, x).astype(np.float32)

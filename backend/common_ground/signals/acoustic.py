@@ -7,13 +7,12 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
-from typing import Optional, Union
 
 import numpy as np
 
 from common_ground.schema import AcousticFeatures
 
-PcmInput = Union[np.ndarray, bytes, bytearray, memoryview]
+PcmInput = np.ndarray | bytes | bytearray | memoryview
 
 _EPS = 1e-9
 _SILENCE_DBFS = -60.0     # below this the whole window counts as silence
@@ -53,15 +52,15 @@ class SpeakerBaseline:
 
     alpha: float = 0.2
     n: int = 0
-    pitch_st: Optional[float] = None
-    rms_db: Optional[float] = None
+    pitch_st: float | None = None
+    rms_db: float | None = None
 
-    def deltas(self, pitch_hz: Optional[float], rms_db: Optional[float]) -> tuple[Optional[float], Optional[float]]:
+    def deltas(self, pitch_hz: float | None, rms_db: float | None) -> tuple[float | None, float | None]:
         dp = hz_to_semitones(pitch_hz) - self.pitch_st if pitch_hz and self.pitch_st is not None else None
         de = rms_db - self.rms_db if rms_db is not None and self.rms_db is not None else None
         return dp, de
 
-    def update(self, pitch_hz: Optional[float], rms_db: Optional[float]) -> None:
+    def update(self, pitch_hz: float | None, rms_db: float | None) -> None:
         if pitch_hz:
             st = hz_to_semitones(pitch_hz)
             self.pitch_st = st if self.pitch_st is None else (1 - self.alpha) * self.pitch_st + self.alpha * st
@@ -126,7 +125,7 @@ class AcousticExtractor:
         )
 
     # ----------------------------------------------------------------- private
-    def _pitch(self, x: np.ndarray, sr: int, hop: int, speech: np.ndarray) -> tuple[Optional[float], Optional[float]]:
+    def _pitch(self, x: np.ndarray, sr: int, hop: int, speech: np.ndarray) -> tuple[float | None, float | None]:
         """Autocorrelation pitch on speech frames; sub-harmonic errors suppressed by preferring the
         shortest lag whose normalised autocorrelation is within 10% of the best peak."""
         win = int(sr * self.pitch_win_ms / 1000)
@@ -167,7 +166,7 @@ class AcousticExtractor:
         f0 = (sr / lags)[ok]
         return float(f0.mean()), float(f0.std())
 
-    def _speech_rate(self, frame_db: np.ndarray, speech: np.ndarray, hop: int, sr: int) -> Optional[float]:
+    def _speech_rate(self, frame_db: np.ndarray, speech: np.ndarray, hop: int, sr: int) -> float | None:
         """Syllable nuclei ~ peaks of the smoothed energy envelope, >= min gap apart."""
         if not speech.any():
             return None

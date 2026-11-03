@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import re
 from collections.abc import Iterable
-from typing import Optional
 
 from common_ground.schema import LinguisticSignals, Speaker, Turn
 
@@ -98,12 +97,7 @@ _WORD = re.compile(r"[A-Za-z0-9']+")
 
 # Function words removed before Jaccard so that "do we have to X" ~ "so we'd need to X".
 _STOPWORDS = frozenset(
-    "a an the and or but so if then than that this these those is are was were be been being "
-    "am do does did done have has had having can could would should will shall may might must "
-    "i me my we us our you your he she it they them their his her its of to in on at by for "
-    "with from as into about over under up down out off not no yes yeah ok okay just really "
-    "very also too again still even well um uh oh like there here what which who whom when where "
-    "why how all any some more most such own same other".split()
+    ["a", "an", "the", "and", "or", "but", "so", "if", "then", "than", "that", "this", "these", "those", "is", "are", "was", "were", "be", "been", "being", "am", "do", "does", "did", "done", "have", "has", "had", "having", "can", "could", "would", "should", "will", "shall", "may", "might", "must", "i", "me", "my", "we", "us", "our", "you", "your", "he", "she", "it", "they", "them", "their", "his", "her", "its", "of", "to", "in", "on", "at", "by", "for", "with", "from", "as", "into", "about", "over", "under", "up", "down", "out", "off", "not", "no", "yes", "yeah", "ok", "okay", "just", "really", "very", "also", "too", "again", "still", "even", "well", "um", "uh", "oh", "like", "there", "here", "what", "which", "who", "whom", "when", "where", "why", "how", "all", "any", "some", "more", "most", "such", "own", "same", "other"]
 )
 
 # Candidate jargon from the wearer's turns.
@@ -111,8 +105,7 @@ _ACRONYM = re.compile(r"\b[A-Z][A-Z0-9]{1,7}s?\b")                 # SSO, OAuth2
 _CAMEL_OR_TECH = re.compile(r"\b(?:[a-z]+[A-Z][A-Za-z0-9]*|[A-Za-z]+(?:[-_/][A-Za-z0-9]+)+|[A-Za-z]+\d+[A-Za-z]*)\b")
 _MID_SENTENCE_CAP = re.compile(r"(?<=[a-z,]\s)([A-Z][a-z]{3,})\b")  # "the Gateway", not "Gateway" at start
 _CAP_STOPLIST = frozenset(
-    "monday tuesday wednesday thursday friday saturday sunday january february march april june "
-    "july august september october november december".split()
+    ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday", "january", "february", "march", "april", "june", "july", "august", "september", "october", "november", "december"]
 )
 
 DEFAULT_JARGON_TERMS: tuple[str, ...] = (
@@ -218,11 +211,11 @@ class LinguisticDetector:
         return list(found)
 
     # ----------------------------------------------------------------- private
-    def _repeat_of(self, text: str, speaker: Speaker, history: list[Turn]) -> Optional[int]:
+    def _repeat_of(self, text: str, speaker: Speaker, history: list[Turn]) -> int | None:
         cur = _content_tokens(text)
         if len(cur) < self.repeat_min_shared:
             return None
-        best: tuple[float, Optional[int]] = (0.0, None)
+        best: tuple[float, int | None] = (0.0, None)
         for turn in history:
             if turn.speaker != speaker or not (turn.linguistic.is_question or self.is_question(turn.text)):
                 continue

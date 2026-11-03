@@ -1,8 +1,9 @@
 """Interfaces shared by the real Muse clients and their mocks."""
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
-from typing import Any, AsyncIterator, Literal, Protocol, runtime_checkable
+from typing import Any, Literal, Protocol, Self, runtime_checkable
 
 TranscriptKind = Literal["partial", "final", "turn_end", "speaker_change"]
 TranscribeMode = Literal["PUSH_TO_TALK", "ENDPOINTING", "DIARIZATION"]
@@ -70,7 +71,7 @@ class ChatClient(Protocol):
 
 @runtime_checkable
 class TranscribeClient(Protocol):
-    async def __aenter__(self) -> "TranscribeClient": ...
+    async def __aenter__(self) -> Self: ...
     async def __aexit__(self, *exc: object) -> None: ...
     async def send_pcm(self, pcm16: bytes) -> None: ...
     async def end_stream(self) -> None: ...

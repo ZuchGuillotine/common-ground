@@ -4,8 +4,17 @@ import time
 import httpx
 import pytest
 
-from common_ground.muse import (ChatClient, MockMuseChat, MockMuseTranscribe, MuseChat, MuseChatError,
-                                TranscribeClient, TranscriptNormaliser, UsageMeter, extract_json)
+from common_ground.muse import (
+    ChatClient,
+    MockMuseChat,
+    MockMuseTranscribe,
+    MuseChat,
+    MuseChatError,
+    TranscribeClient,
+    TranscriptNormaliser,
+    UsageMeter,
+    extract_json,
+)
 from common_ground.muse.models import MUSE_SPARK_1_3, price_for
 from common_ground.muse.transcribe import MuseTranscribeError
 

@@ -14,8 +14,9 @@ import asyncio
 import json
 import os
 import time
+from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
-from typing import Any, AsyncIterator
+from typing import Any, Self
 
 from websockets.asyncio.client import ClientConnection, connect
 from websockets.exceptions import ConnectionClosed, ConnectionClosedOK
@@ -142,12 +143,12 @@ class MuseTranscribe:
         self._norm = TranscriptNormaliser()
 
     # ------------------------------------------------------------- lifecycle
-    async def __aenter__(self) -> "MuseTranscribe":
+    async def __aenter__(self) -> Self:
         self._ws = await connect(self.url, max_size=None)
         await self._ws.send(json.dumps(self.handshake()))
         try:
             ack = json.loads(await asyncio.wait_for(self._ws.recv(), HANDSHAKE_TIMEOUT_S))
-        except (asyncio.TimeoutError, ConnectionClosed) as e:
+        except (TimeoutError, ConnectionClosed) as e:
             raise MuseTranscribeError(f"handshake failed: {e}") from e
         if not isinstance(ack, dict) or ack.get("type") == "error" or not ack.get("sessionId"):
             raise MuseTranscribeError(f"handshake rejected: {ack}")

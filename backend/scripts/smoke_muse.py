@@ -16,9 +16,9 @@ import wave
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from common_ground.muse import MuseChat, MuseError, MuseTranscribe  # noqa: E402
-from common_ground.muse.chat import api_key_from_env, base_url_from_env  # noqa: E402
-from common_ground.muse.transcribe import PCM_16KHZ_BYTES_PER_SEC  # noqa: E402
+from common_ground.muse import DEFAULT_CHAT_MODEL, MuseChat, MuseError, MuseTranscribe
+from common_ground.muse.chat import api_key_from_env, base_url_from_env
+from common_ground.muse.transcribe import PCM_16KHZ_BYTES_PER_SEC
 
 CHUNK_MS = 80
 
@@ -92,7 +92,7 @@ def main() -> None:
     print("base url:", base_url_from_env())
     try:
         if not args.skip_chat:
-            asyncio.run(smoke_chat(args.model or MuseChat.__init__.__kwdefaults__["model"]))
+            asyncio.run(smoke_chat(args.model or DEFAULT_CHAT_MODEL))
         if args.wav:
             asyncio.run(smoke_transcribe(args.wav, args.mode))
     except MuseError as e:

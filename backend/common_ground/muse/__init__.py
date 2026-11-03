@@ -6,9 +6,21 @@ from .models import DEFAULT_CHAT_MODEL, DEFAULT_TRANSCRIBE_MODEL, MUSE_SPARK_1_3
 from .transcribe import MuseTranscribe, MuseTranscribeError, TranscriptNormaliser
 
 __all__ = [
-    "ChatClient", "TranscribeClient", "TranscriptEvent", "UsageMeter", "MuseError",
-    "MuseChat", "MuseChatError", "extract_json",
-    "MuseTranscribe", "MuseTranscribeError", "TranscriptNormaliser",
-    "MockMuseChat", "MockMuseTranscribe",
-    "DEFAULT_CHAT_MODEL", "DEFAULT_TRANSCRIBE_MODEL", "MUSE_SPARK_1_3", "MUSE_VOICE_TRANSCRIBE_1_0",
+    "DEFAULT_CHAT_MODEL",
+    "DEFAULT_TRANSCRIBE_MODEL",
+    "MUSE_SPARK_1_3",
+    "MUSE_VOICE_TRANSCRIBE_1_0",
+    "ChatClient",
+    "MockMuseChat",
+    "MockMuseTranscribe",
+    "MuseChat",
+    "MuseChatError",
+    "MuseError",
+    "MuseTranscribe",
+    "MuseTranscribeError",
+    "TranscribeClient",
+    "TranscriptEvent",
+    "TranscriptNormaliser",
+    "UsageMeter",
+    "extract_json",
 ]

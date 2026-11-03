@@ -9,7 +9,6 @@ import json
 import os
 import time
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 
@@ -29,10 +28,10 @@ class TextEmotionClassifier:
 
     def __init__(
         self,
-        model_dir: Optional[Path] = None,
+        model_dir: Path | None = None,
         top_k: int = 3,
         max_tokens: int = 128,
-        threads: Optional[int] = None,
+        threads: int | None = None,
     ) -> None:
         self.model_dir = Path(model_dir) if model_dir else default_model_dir()
         self.top_k = top_k
@@ -41,7 +40,7 @@ class TextEmotionClassifier:
         self._session = None
         self._tokenizer = None
         self._labels: list[str] = []
-        self.last_latency_ms: Optional[float] = None
+        self.last_latency_ms: float | None = None
 
     # ------------------------------------------------------------------ loading
     def _ensure_loaded(self) -> None:

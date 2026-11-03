@@ -13,7 +13,11 @@ from collections.abc import Callable
 import numpy as np
 
 from common_ground.schema import Turn
-from common_ground.signals import AcousticExtractor, LinguisticDetector, TextEmotionClassifier
+from common_ground.signals import (
+    AcousticExtractor,
+    LinguisticDetector,
+    TextEmotionClassifier,
+)
 
 
 def timeit(name: str, fn: Callable[[], object], n: int) -> None:

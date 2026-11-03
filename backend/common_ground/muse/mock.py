@@ -3,7 +3,8 @@ from __future__ import annotations
 
 import asyncio
 import json
-from typing import Any, AsyncIterator, Callable
+from collections.abc import AsyncIterator, Callable
+from typing import Any, Self
 
 from .base import Message, TranscriptEvent, UsageMeter
 from .chat import extract_json
@@ -64,7 +65,7 @@ class MockMuseTranscribe:
         self.t_last_audio: float | None = None
         self._ended = asyncio.Event()
 
-    async def __aenter__(self) -> "MockMuseTranscribe":
+    async def __aenter__(self) -> Self:
         return self
 
     async def __aexit__(self, *exc: object) -> None:
