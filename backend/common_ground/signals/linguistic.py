@@ -72,7 +72,8 @@ PATTERNS: dict[str, list[str]] = {
         r"^(?:i mean,? )?(?:maybe|possibly|perhaps|could be|kind of|sort of)\.?$",
     ],
     "soft_refusal": [
-        r"(?:that|this|it) (?:might|may|could|would) be (?:difficult|hard|tricky|a problem|a stretch|tough)",
+        r"\b[\w' ]{1,20}? (?:might|may|could|would) be (?:difficult|hard|tricky|a problem|a stretch|tough)",
+        r"i(?:'ll| will) see what i can do",
         r"we(?:'ll| will) see\b",
         r"let me think about (?:it|that)",
         r"i(?:'ll| will) (?:get back to you|think about it|have to (?:check|see|ask))",
@@ -123,6 +124,19 @@ def _compile(fragments: Iterable[str]) -> re.Pattern[str]:
 
 def _tokens(text: str) -> list[str]:
     return [t.lower() for t in _WORD.findall(text)]
+
+
+_ASKING = re.compile(r"\b(?:i(?:'m| am) asking|my question (?:is|was)|the question is|i(?:'m| am) (?:still )?not clear on)\b", re.I)
+
+
+_WH = frozenset(["what", "why", "how", "when", "where", "which", "who"])
+_FILLER = frozenset(["i'm", "it's", "that's", "i'll", "you're", "we're", "asking", "ask", "said", "saying", "mean"])
+
+
+def _question_tokens(text: str) -> set[str]:
+    """For repeat detection: wh-words are the most informative tokens in a question, so keep them."""
+    toks = set(_tokens(text))
+    return {t for t in toks if (t not in _STOPWORDS or t in _WH) and t not in _FILLER and len(t) > 1}
 
 
 def _content_tokens(text: str) -> set[str]:
@@ -182,7 +196,8 @@ class LinguisticDetector:
             hedged_agreement=hit["hedged_agreement"],
             soft_refusal=hit["soft_refusal"],
             minimal_response=len(words) <= 3,
-            jargon_terms=self._jargon(t, speaker, history, queried=hit["clarification_request"] or is_q),
+            jargon_terms=self._jargon(t, speaker, history, queried=hit["clarification_request"] or is_q,
+                                      clarifying=hit["clarification_request"]),
         )
 
     @staticmethod
@@ -192,6 +207,8 @@ class LinguisticDetector:
             return True
         # ASR often drops punctuation: accept a clause-initial wh-/aux word only when the
         # utterance is short enough to plausibly be a single question.
+        if _ASKING.search(t):
+            return True
         return bool(_WH_OR_AUX_START.match(t)) and len(_tokens(t)) <= 12
 
     def wearer_terms(self, text: str) -> list[str]:
@@ -212,20 +229,21 @@ class LinguisticDetector:
 
     # ----------------------------------------------------------------- private
     def _repeat_of(self, text: str, speaker: Speaker, history: list[Turn]) -> int | None:
-        cur = _content_tokens(text)
+        cur = _question_tokens(text)
         if len(cur) < self.repeat_min_shared:
             return None
         best: tuple[float, int | None] = (0.0, None)
         for turn in history:
             if turn.speaker != speaker or not (turn.linguistic.is_question or self.is_question(turn.text)):
                 continue
-            prev = _content_tokens(turn.text)
+            prev = _question_tokens(turn.text)
             score = jaccard(cur, prev)
             if score >= self.repeat_threshold and len(cur & prev) >= self.repeat_min_shared and score > best[0]:
                 best = (score, turn.turn_id)
         return best[1]
 
-    def _jargon(self, text: str, speaker: Speaker, history: list[Turn], queried: bool) -> list[str]:
+    def _jargon(self, text: str, speaker: Speaker, history: list[Turn], queried: bool,
+                clarifying: bool = False) -> list[str]:
         """Terms the wearer introduced that the counterpart now queries, or has never echoed."""
         if speaker != "counterpart":
             return []
@@ -238,7 +256,7 @@ class LinguisticDetector:
                 uses[term] = uses.get(term, 0) + 1
                 first_use.setdefault(term, i)
         if not uses:
-            return []
+            return self._echoed_terms(text, history) if clarifying else []
 
         cp_texts = [h.text.lower() for h in history if h.speaker == "counterpart"]
         cp_since_first = {
@@ -260,5 +278,28 @@ class LinguisticDetector:
                 and not any(word.search(c) for c in cp_texts)
             ):
                 unechoed.append(term)                              # counterpart never echoes it
+        if clarifying and not asked:
+            asked = self._echoed_terms(text, history)   # plain-prose terms: "escrow", "retention policy"
         # An explicit query is the sharper nomination; don't dilute it with the weaker signal.
         return asked or unechoed
+
+    @staticmethod
+    def _echoed_terms(text: str, history: list[Turn], window: int = 2) -> list[str]:
+        """Content words/bigrams from the wearer's recent turns that the counterpart repeats in a question."""
+        recent = [h for h in history if h.speaker == "wearer"][-window:]
+        if not recent:
+            return []
+        cur = _content_tokens(text)
+        cur_toks = [t for t in _tokens(text)]
+        cur_bigrams = {f"{a} {b}" for a, b in zip(cur_toks, cur_toks[1:])}
+        out: dict[str, None] = {}
+        for h in recent:
+            toks = _tokens(h.text)
+            for a, b in zip(toks, toks[1:]):
+                bg = f"{a} {b}"
+                if bg in cur_bigrams and a not in _STOPWORDS and b not in _STOPWORDS:
+                    out[bg] = None
+            for t in _content_tokens(h.text) & cur:
+                if len(t) >= 5 and not any(t in bg for bg in out):
+                    out[t] = None
+        return list(out)[:3]
