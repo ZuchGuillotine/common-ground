@@ -1,0 +1,57 @@
+{
+  "id": "gen_escalating_friction_01",
+  "type": "escalating_friction",
+  "goal": "resolve",
+  "generated": true,
+  "setting": "software vendor sales call",
+  "intended_message": "Vendor keeps re-explaining on-prem deployment while buyer repeats the same question with shorter, more impatient phrasing",
+  "turns": [
+    {
+      "speaker": "wearer",
+      "text": "Hey Sarah, I'm Dan from Veritone Systems, we help mid-size logistics firms automate invoicing, figured I'd walk you through how it'd fit for Hartley Freight.",
+      "t_start": 0.0,
+      "t_end": 10.0
+    },
+    {
+      "speaker": "counterpart",
+      "text": "Okay, but quick question, does this run on-prem? We can't put data in the cloud.",
+      "t_start": 10.5,
+      "t_end": 16.5
+    },
+    {
+      "speaker": "wearer",
+      "text": "Totally get that, yeah, so we have a hybrid deployment, basically the core engine can sit inside your firewall on your own VMs, only metadata syncs out, and it's the same setup we did for two other freight clients with strict compliance.",
+      "t_start": 17.0,
+      "t_end": 33.8
+    },
+    {
+      "speaker": "counterpart",
+      "text": "Yeah but does it run on-prem, like fully on our boxes?",
+      "t_start": 34.3,
+      "t_end": 38.7
+    },
+    {
+      "speaker": "wearer",
+      "text": "Yes, absolutely, so to re-explain, you install our container on your Windows Server or VMware, SQL stays local, nothing sensitive leaves, the cloud piece is just licensing and updates, your ops team keeps full control.",
+      "t_start": 39.2,
+      "t_end": 53.2
+    },
+    {
+      "speaker": "counterpart",
+      "text": "So on our boxes?",
+      "t_start": 53.7,
+      "t_end": 55.3
+    }
+  ],
+  "expect": {
+    "should_intervene": true,
+    "mismatch_type": [
+      "escalating_friction",
+      "unanswered_objection"
+    ],
+    "intervene_on_turn_in": [
+      3,
+      5
+    ]
+  }
+}

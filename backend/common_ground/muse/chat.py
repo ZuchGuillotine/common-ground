@@ -20,10 +20,23 @@ from .models import CHAT_COMPLETIONS_PATH, DEFAULT_BASE_URL, DEFAULT_CHAT_MODEL,
 
 RETRY_STATUSES = {429, 500, 502, 503, 504}
 MAX_RETRIES = 3
+
+# VERIFIED LIVE 2026-11-03: Muse Spark's reasoning tokens are billed as output tokens AND count against
+# `max_completion_tokens`; when the budget runs out mid-reasoning the response has finish_reason="length"
+# and `message.content: null` (no partial JSON). Even reasoning_effort="minimal" spent ~60 tokens on a
+# one-word question ("low" ~200, "medium" ~330); on the interpreter prompt "low" spent 1-2.5k tokens
+# (p50 latency 13.7 s) and once exhausted a 2,560-token budget. So: `max_tokens` is the *visible* output
+# budget with `REASONING_HEADROOM_TOKENS` added on top, the default effort is "minimal" (this is a
+# latency-bound coaching loop), and an exhausted budget is retried once with "minimal" effort and double
+# the budget before giving up. `reasoning_effort: "none"` is rejected by the API (HTTP 400).
+DEFAULT_REASONING_EFFORT = os.environ.get("LLAMA_REASONING_EFFORT", "minimal")
+REASONING_HEADROOM_TOKENS = int(os.environ.get("LLAMA_REASONING_HEADROOM", "1536"))
 _FENCE = re.compile(r"```(?:json)?\s*(.*?)```", re.DOTALL)
 
 
 class MuseChatError(MuseError):
+    budget_exhausted = False   # True when reasoning consumed max_completion_tokens before any visible text
+
     def __init__(self, message: str, status: int | None = None, body: Any = None):
         super().__init__(message)
         self.status, self.body = status, body
@@ -77,12 +90,14 @@ class MuseChat:
 
     def __init__(self, api_key: str | None = None, base_url: str | None = None, *,
                  model: str = DEFAULT_CHAT_MODEL, timeout: float = 60.0,
+                 reasoning_effort: str | None = DEFAULT_REASONING_EFFORT,
                  client: httpx.AsyncClient | None = None):
         self.api_key = api_key or api_key_from_env()
         if not self.api_key:
             raise MuseChatError("LLAMA_API_KEY (or MODEL_API_KEY) is not set")
         self.base_url = (base_url or base_url_from_env()).rstrip("/")
         self.model = model
+        self.reasoning_effort = reasoning_effort   # minimal|low|medium|high|xhigh; None = server default
         self.usage = UsageMeter()
         self._client = client or httpx.AsyncClient(timeout=timeout)
 
@@ -103,15 +118,32 @@ class MuseChat:
     async def complete(self, messages: list[Message], *, model: str | None = None,
                        json_schema: dict | None = None, max_tokens: int = 1024,
                        temperature: float | None = None) -> str:
+        try:
+            return await self._complete(messages, model=model, json_schema=json_schema, max_tokens=max_tokens,
+                                        temperature=temperature, reasoning_effort=self.reasoning_effort)
+        except MuseChatError as e:
+            if not e.budget_exhausted:
+                raise
+        # reasoning ate the whole budget: one more try, cheapest reasoning and twice the room
+        return await self._complete(messages, model=model, json_schema=json_schema, max_tokens=max_tokens,
+                                    temperature=temperature, reasoning_effort="minimal",
+                                    headroom=2 * REASONING_HEADROOM_TOKENS + max_tokens)
+
+    async def _complete(self, messages: list[Message], *, model: str | None, json_schema: dict | None,
+                        max_tokens: int, temperature: float | None, reasoning_effort: str | None,
+                        headroom: int = REASONING_HEADROOM_TOKENS) -> str:
         body: dict[str, Any] = {
             "model": model or self.model,
             "messages": messages,
-            "max_completion_tokens": max_tokens,   # `max_tokens` is a deprecated alias
+            # `max_tokens` is the visible-output budget; reasoning tokens share the cap, so add headroom.
+            "max_completion_tokens": max_tokens + headroom,
         }
+        if reasoning_effort:
+            body["reasoning_effort"] = reasoning_effort
         if temperature is not None:               # docs: Muse Spark is tuned for the default (1.0)
             body["temperature"] = temperature
         if json_schema is not None:
-            body["response_format"] = {
+            body["response_format"] = {   # VERIFIED: `name` is required (400 without it); strict defaults false
                 "type": "json_schema",
                 "json_schema": {"name": json_schema.get("title", "Output"), "schema": json_schema},
             }
@@ -120,9 +152,19 @@ class MuseChat:
         self.usage.add(int(usage.get("prompt_tokens", 0)), int(usage.get("completion_tokens", 0)),
                        price_for(body["model"]))
         try:
-            content = data["choices"][0]["message"]["content"]
+            choice = data["choices"][0]
+            content = choice["message"]["content"]
         except (KeyError, IndexError, TypeError) as e:
             raise MuseChatError(f"unexpected response shape: {data}", body=data) from e
+        if content is None and choice.get("finish_reason") == "length":
+            details = usage.get("completion_tokens_details") or {}
+            err = MuseChatError(
+                f"output budget exhausted before any visible text (max_completion_tokens="
+                f"{body['max_completion_tokens']}, reasoning_effort={reasoning_effort}, "
+                f"reasoning_tokens={details.get('reasoning_tokens')}); raise max_tokens or lower "
+                f"reasoning_effort", body=data)
+            err.budget_exhausted = True
+            raise err
         if isinstance(content, list):   # multi-part content; keep text parts
             content = "".join(p.get("text", "") for p in content if isinstance(p, dict))
         return content or ""

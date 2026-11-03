@@ -1,8 +1,9 @@
 # Meta Model API (Muse) — wire protocol notes
 
-Written 2026-11-03 from the public docs; **not yet verified against a live key** (no key was available in
-the authoring session). Anything marked UNVERIFIED is a documented-but-untested assumption and is isolated
-to a single constant/function in code so it can be fixed in one place.
+Written 2026-11-03 from the public docs and **verified against a live key the same day** (chat, structured
+output, list-models, and the Voice Transcribe realtime WebSocket in DIARIZATION and ENDPOINTING modes, using a
+23.7 s two-voice synthetic clip, `fixtures/audio/synthetic_two_speakers.wav`). Items marked VERIFIED were
+observed on the wire; the measured numbers and the eval results are in [RESULTS.md](RESULTS.md).
 
 Implementation: `backend/common_ground/muse/` (`chat.py`, `transcribe.py`, `models.py`).
 
@@ -44,9 +45,36 @@ Source: https://dev.meta.ai/docs/protocols/chat-completions
   `reasoning_effort: "none"`, Responses-style `text.format`, `max_output_tokens`.
 * Response: `choices[0].message.content` (string), `choices[0].finish_reason`,
   `usage.prompt_tokens` / `usage.completion_tokens` / `usage.total_tokens`.
-* Models list: `GET {base}/models` (https://dev.meta.ai/docs/api-reference/models/list-models); the response
-  schema is not shown on that page, we assume the OpenAI `{"data":[{"id":...}]}` shape (UNVERIFIED, handled
-  leniently in `MuseChat.list_models`).
+* Models list: `GET {base}/models` (https://dev.meta.ai/docs/api-reference/models/list-models). VERIFIED shape:
+  `{"object": "list", "data": [{"id": "muse-spark-1.3", "object": "model", "created": 0, "owned_by": "meta"}, ...]}`.
+  The live catalogue also lists `sam-3.1`, `muse-image-1.0` and `muse-spark-1.2-contributor`.
+* VERIFIED `usage` shape: `prompt_tokens`, `completion_tokens`, `total_tokens`, plus
+  `completion_tokens_details.reasoning_tokens` and `prompt_tokens_details.cached_tokens`.
+
+### Reasoning tokens vs `max_completion_tokens` (VERIFIED, the one real surprise)
+
+Muse Spark always reasons before answering, the reasoning tokens are billed as output **and count against
+`max_completion_tokens`**. When the budget runs out during reasoning the response is HTTP 200 with
+`finish_reason: "length"` and `message.content: null` (no partial text, no error). Measured on
+"Capital of France? One word." with a JSON schema:
+
+| `reasoning_effort` | reasoning tokens | visible result at `max_completion_tokens=64` |
+|---|---|---|
+| `minimal` | 56 | `content: null`, `finish_reason: length` |
+| `low` | 201 | `content: null` |
+| `medium` (server default looks like this) | 334 | `content: null` |
+| any, at 400+ | | `{"answer":"Paris","confidence":1}` |
+
+On the coaching interpreter prompt, `low` spent 1,000-2,500 reasoning tokens per call (p50 latency 13.7 s,
+p95 21.6 s) and once exhausted a 2,560-token budget. `reasoning_effort: "none"` is rejected with HTTP 400, as
+the docs say; `minimal|low|medium|high|xhigh` are accepted.
+
+What `MuseChat` does about it (`chat.py`):
+* `max_tokens` means the *visible* output budget; `REASONING_HEADROOM_TOKENS` (1536, env
+  `LLAMA_REASONING_HEADROOM`) is added to `max_completion_tokens`.
+* `reasoning_effort` defaults to `minimal` (env `LLAMA_REASONING_EFFORT`); this is a latency-bound loop.
+* `content: null` + `finish_reason: length` raises `MuseChatError(budget_exhausted=True)`; `complete()` retries
+  that case once with `minimal` effort and twice the budget, then raises. Both attempts are metered.
 
 ### Structured output
 
@@ -61,6 +89,10 @@ subset (root must be an object, every object needs `additionalProperties: false`
 `required`, no `allOf`/`oneOf`, no recursion, depth <= 10). We send `strict` unset (= false) so ordinary
 schemas are accepted. `complete_json()` still runs the tolerant extractor on the returned text; with no schema
 it prepends a "reply with a single JSON object" system message.
+
+VERIFIED: `json_schema.name` **is required**; without it the API returns HTTP 400
+`` `response_format` missing required field `name` ``. A `title` key inside the schema itself is accepted.
+The returned `content` is compact JSON exactly matching the schema (e.g. `{"answer":"Paris","confidence":1}`).
 
 ### Errors and retries
 
@@ -95,6 +127,7 @@ https://github.com/meta-models/meta-model-cookbook/tree/main/06_muse_voice/01_vo
  "languageBias": ["English"]}           // optional, English language names, not codes
 ```
 * Handshake ack: `{"sessionId": "..."}` — the only server frame without a `type`. Wait for it before sending audio.
+  VERIFIED: ids look like `voyager/duplex/AB1C644B7F0541D6A80223E7068FB6F8`; connect + ack took ~0.8 s.
 
 ### Audio
 
@@ -103,7 +136,10 @@ https://github.com/meta-models/meta-model-cookbook/tree/main/06_muse_voice/01_vo
 * Must be sent at ~real time: the server closes with 1008 if the client is >5 s ahead of processing or if
   ingress stays below real time for 10 s. `MuseTranscribe(pace=True)` throttles sends for file replay.
 * End of input: text frame `{"type": "endStream"}`; send nothing after it; keep reading until the server
-  closes with 1000 (closing early can drop pending events).
+  closes with 1000 (closing early can drop pending events). VERIFIED: after `endStream` the server flushes the
+  pending `speaker`/`speechEnd`/`speechComplete`, then sends **`{"type": "transcript", "final": true,
+  "transcript": "", "audioProcessedMs": N}` in every mode** (not only PUSH_TO_TALK) as an end-of-stream
+  marker, then closes with 1000 and reason `No more transcript segments`. The normaliser ignores that marker.
 
 ### Server events (`type` discriminator; ignore unknown types)
 
@@ -117,9 +153,33 @@ https://github.com/meta-models/meta-model-cookbook/tree/main/06_muse_voice/01_vo
 | `audioProgress` | `audioProcessedMs` | cumulative processed audio (useful for billing) |
 | `error` | `message`, `sessionId`, optional `errorType`, `errorCode`, `errorParam` | sent just before the server closes |
 
-Close codes: 1000 normal; 1008 invalid request / pacing violation (do not retry unchanged); 1011 backend
-failure or "Max session duration reached" (retry with backoff / new session); 1013 rate limited (back off).
+Close codes: 1000 normal (VERIFIED, reason `No more transcript segments`); 1008 invalid request / pacing
+violation (do not retry unchanged); 1011 backend failure or "Max session duration reached" (retry with
+backoff / new session); 1013 rate limited (back off).
 Limits: 60 min max session; idle input or stalled output closes the session.
+
+### What the stream actually looked like (VERIFIED, DIARIZATION, two alternating voices)
+
+Per turn, in this order every time: `speechStart{turnId}` → cumulative `transcript{final:false}` partials
+(no `turnId`, ~every 160-400 ms of audio, text is lower-case and unpunctuated) → `speaker{label}` →
+`speechEnd{turnId}` → `speechComplete{turnId, transcript}`, the last three in one burst. Then the next
+`speechStart`. `audioProgress` interleaves when enabled.
+
+* `speaker.label` is `"A"`, `"B"` (bare letters, session-local). On the clip both voices were labelled
+  correctly on all 6 turns and the labels alternated with the voices.
+* `speechStart.audioProcessedMs` is the **speech onset** (60 ms for a voice that starts at t=0), and
+  `speechEnd.audioProcessedMs` is the **speech offset**: both were ~500 ms behind the processing position
+  reported by the `speaker`/`transcript` events emitted in the same burst, i.e. the endpointer needs ~500 ms
+  of trailing silence to close a turn. `t_start`/`t_end` in `TranscriptEvent` are therefore accurate, not
+  approximate as first assumed.
+* `speechComplete.transcript` is post-processed (capitalised, punctuated) in most sessions but was returned
+  lower-case/unpunctuated in one of five sessions, so do not rely on punctuation.
+* ENDPOINTING: no `speaker` events; otherwise identical. In one of three runs it merged two short turns
+  spoken by different voices across a 0.7 s pause into one segment (DIARIZATION never did), so DIARIZATION is
+  the better turn segmenter for a two-person conversation even if labels are ignored.
+* Latency (16 kHz, paced real-time replay): the final `speechComplete` arrived 166-188 ms after the last
+  audio byte was sent and ~500-610 ms after the speech offset; the ~500 ms is the endpointer's trailing
+  silence, not network/compute. Interim partials trail the audio by well under a second.
 
 ### Normalisation performed by `TranscriptNormaliser` (transcribe.py)
 
@@ -129,16 +189,18 @@ Limits: 60 min max session; idle input or stalled output closes the session.
   `t_end` = `speechEnd.audioProcessedMs/1000` when seen, else the completing event's.
 * `speaker_change` ← `speaker` when the label differs from the previous one; the label is attached to the
   current open turn and inherited by following turns until the next `speaker` event.
-* Speaker labels are mapped to `S0`, `S1`, … in first-seen order (`normalise_speaker_label`). UNVERIFIED: the
-  docs only say labels are bare letters like `A`.
+* Speaker labels are mapped to `S0`, `S1`, … in first-seen order (`normalise_speaker_label`). VERIFIED: the
+  wire labels are `A`, `B`.
+* The end-of-stream `transcript{final:true, transcript:""}` marker is dropped when no turn is open.
 
-### Known unknowns (need a key to confirm)
+### Former known unknowns, now resolved live
 
-1. Whether `speechStart.audioProcessedMs` is the speech onset or merely the amount of audio processed when the
-   event was emitted (the batch endpoint has true `startMs`/`endMs`; the stream has only `audioProcessedMs`).
-   Our `t_start`/`t_end` are therefore approximate, probably late by up to one processing chunk.
-2. Whether a `speaker` event can arrive after `speechEnd`/`speechComplete` for its turn. We attach it to the
-   turn that is open at that moment (per the cookbook's documented order: speechStart → partials → speaker →
-   speechEnd → speechComplete).
-3. Exact `ListModelsResponse` shape.
-4. Whether `response_format.json_schema.name` is required (we always send it).
+1. `speechStart.audioProcessedMs` **is** the speech onset and `speechEnd.audioProcessedMs` the offset (see
+   above); `t_start`/`t_end` are exact to the endpointer's resolution.
+2. `speaker` arrives **before** `speechEnd`/`speechComplete` for its turn, in the same burst, so attaching it to
+   the open turn is correct.
+3. `ListModelsResponse` is the OpenAI shape `{"object":"list","data":[{"id",...}]}`.
+4. `response_format.json_schema.name` **is required** (HTTP 400 without it).
+
+New findings that required code changes: reasoning tokens count against `max_completion_tokens` (see the
+chat section), and the end-of-stream `transcript{final:true}` marker is sent in every mode (see above).

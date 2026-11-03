@@ -1,0 +1,44 @@
+{
+  "id": "gen_term_ambiguity_00",
+  "type": "term_ambiguity",
+  "goal": "explain",
+  "generated": true,
+  "setting": "two co-founders",
+  "intended_message": "Wearer wants to extend cash runway to 18 months by cutting paid marketing spend",
+  "turns": [
+    {
+      "speaker": "wearer",
+      "text": "Hey Alex, I think we can stretch our runway to like eighteen months if we kill paid spend.",
+      "t_start": 0.0,
+      "t_end": 7.2
+    },
+    {
+      "speaker": "counterpart",
+      "text": "Wait, runway? You mean cash runway or the runway for the pilot launch?",
+      "t_start": 7.7,
+      "t_end": 12.9
+    },
+    {
+      "speaker": "wearer",
+      "text": "Oh cash, sorry. Like if we pause ads we're good till early twenty-seven.",
+      "t_start": 13.4,
+      "t_end": 18.6
+    },
+    {
+      "speaker": "counterpart",
+      "text": "Got it, okay yeah let's run the numbers tomorrow then.",
+      "t_start": 19.1,
+      "t_end": 23.1
+    }
+  ],
+  "expect": {
+    "should_intervene": true,
+    "mismatch_type": [
+      "term_ambiguity"
+    ],
+    "intervene_on_turn_in": [
+      1,
+      3
+    ]
+  }
+}

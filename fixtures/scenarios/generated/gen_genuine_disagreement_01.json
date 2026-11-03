@@ -1,0 +1,45 @@
+{
+  "id": "gen_genuine_disagreement_01",
+  "type": "genuine_disagreement",
+  "goal": "negotiate",
+  "generated": true,
+  "setting": "two co-founders",
+  "intended_message": "We should pause new sales hiring to cover support burn",
+  "turns": [
+    {
+      "speaker": "wearer",
+      "text": "I think we need to hold that sales hire and use the cash to get help for support, we're drowning.",
+      "t_start": 0.0,
+      "t_end": 8.0
+    },
+    {
+      "speaker": "counterpart",
+      "text": "I get it, support is slammed, but I disagree on freezing the hire, if we don't have someone on pipeline we'll stall by spring.",
+      "t_start": 8.5,
+      "t_end": 18.1
+    },
+    {
+      "speaker": "wearer",
+      "text": "But if churn keeps up like this, more sales just means more angry customers.",
+      "t_start": 18.6,
+      "t_end": 24.2
+    },
+    {
+      "speaker": "counterpart",
+      "text": "Totally fair concern, I just think the fix is me covering support part-time while the rep ramps, not pausing growth.",
+      "t_start": 24.7,
+      "t_end": 32.7
+    }
+  ],
+  "expect": {
+    "should_intervene": "either",
+    "mismatch_type": [
+      "genuine_disagreement",
+      "none"
+    ],
+    "intervene_on_turn_in": [
+      1,
+      3
+    ]
+  }
+}

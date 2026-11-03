@@ -1,0 +1,45 @@
+{
+  "id": "gen_genuine_disagreement_00",
+  "type": "genuine_disagreement",
+  "goal": "negotiate",
+  "generated": true,
+  "setting": "software vendor sales call",
+  "intended_message": "We understand your pitch about cutting QA time, but we disagree it's a problem for us and don't want to buy.",
+  "turns": [
+    {
+      "speaker": "wearer",
+      "text": "Hi Priya, thanks for jumping on \u2014 I wanted to show how our automation suite could cut your QA cycle in half.",
+      "t_start": 0.0,
+      "t_end": 8.8
+    },
+    {
+      "speaker": "counterpart",
+      "text": "Yeah I get it, Alex, and the demo makes sense \u2014 I just don't agree cycle time is an issue for us right now.",
+      "t_start": 9.3,
+      "t_end": 18.9
+    },
+    {
+      "speaker": "wearer",
+      "text": "Okay, so is it more about coverage then? Because we help a lot there too.",
+      "t_start": 19.4,
+      "t_end": 25.4
+    },
+    {
+      "speaker": "counterpart",
+      "text": "No, we're good on both, honestly. We're going to stick with what we have, but thanks for reaching out.",
+      "t_start": 25.9,
+      "t_end": 33.5
+    }
+  ],
+  "expect": {
+    "should_intervene": "either",
+    "mismatch_type": [
+      "genuine_disagreement",
+      "none"
+    ],
+    "intervene_on_turn_in": [
+      1,
+      3
+    ]
+  }
+}

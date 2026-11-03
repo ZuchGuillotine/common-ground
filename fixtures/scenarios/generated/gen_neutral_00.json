@@ -1,0 +1,38 @@
+{
+  "id": "gen_neutral_00",
+  "type": "neutral",
+  "goal": "understand",
+  "generated": true,
+  "setting": "two co-founders",
+  "intended_message": "Confirm agreement on pricing draft and next steps for Thursday review",
+  "turns": [
+    {
+      "speaker": "wearer",
+      "text": "Hey Maya, did you get a look at the pricing draft I sent over?",
+      "t_start": 0.0,
+      "t_end": 5.6
+    },
+    {
+      "speaker": "counterpart",
+      "text": "Yeah I did, looks really solid. I'd just bump the starter tier a little.",
+      "t_start": 6.1,
+      "t_end": 11.7
+    },
+    {
+      "speaker": "wearer",
+      "text": "Makes sense, I'll tweak that and send it to design today.",
+      "t_start": 12.2,
+      "t_end": 16.6
+    },
+    {
+      "speaker": "counterpart",
+      "text": "Perfect, then we're all set for Thursday's review.",
+      "t_start": 17.1,
+      "t_end": 20.3
+    }
+  ],
+  "expect": {
+    "should_intervene": false,
+    "mismatch_type": []
+  }
+}

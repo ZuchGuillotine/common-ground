@@ -1,0 +1,44 @@
+{
+  "id": "gen_indirect_refusal_00",
+  "type": "indirect_refusal",
+  "goal": "negotiate",
+  "generated": true,
+  "setting": "contractor and homeowner",
+  "intended_message": "Contractor asks homeowner to lock in a start date, homeowner softly defers without saying no",
+  "turns": [
+    {
+      "speaker": "wearer",
+      "text": "Hey Dave, can we lock in next Monday for the kitchen demo?",
+      "t_start": 0.0,
+      "t_end": 4.8
+    },
+    {
+      "speaker": "counterpart",
+      "text": "Oh man, that might be hard with our schedule, let me think.",
+      "t_start": 5.3,
+      "t_end": 10.1
+    },
+    {
+      "speaker": "wearer",
+      "text": "Yeah I get it, I just gotta hold the crew if we're doing it.",
+      "t_start": 10.6,
+      "t_end": 16.2
+    },
+    {
+      "speaker": "counterpart",
+      "text": "Totally, let me check with Karen tonight and I'll get back to you?",
+      "t_start": 16.7,
+      "t_end": 21.9
+    }
+  ],
+  "expect": {
+    "should_intervene": true,
+    "mismatch_type": [
+      "indirect_refusal"
+    ],
+    "intervene_on_turn_in": [
+      1,
+      3
+    ]
+  }
+}

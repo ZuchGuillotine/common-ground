@@ -1,0 +1,44 @@
+{
+  "id": "gen_indirect_refusal_01",
+  "type": "indirect_refusal",
+  "goal": "negotiate",
+  "generated": true,
+  "setting": "two friends planning a trip",
+  "intended_message": "wearer pushes for a firm commitment to book the trip, counterpart avoids saying no and defers softly",
+  "turns": [
+    {
+      "speaker": "wearer",
+      "text": "So can we just lock in the Airbnb for next weekend?",
+      "t_start": 0.0,
+      "t_end": 4.4
+    },
+    {
+      "speaker": "counterpart",
+      "text": "Hmm, that might be hard right now, let me think about it a bit.",
+      "t_start": 4.9,
+      "t_end": 10.5
+    },
+    {
+      "speaker": "wearer",
+      "text": "It's gonna sell out though, can you let me know tonight?",
+      "t_start": 11.0,
+      "t_end": 15.4
+    },
+    {
+      "speaker": "counterpart",
+      "text": "Yeah totally, I'll check my schedule and get back to you soon.",
+      "t_start": 15.9,
+      "t_end": 20.7
+    }
+  ],
+  "expect": {
+    "should_intervene": true,
+    "mismatch_type": [
+      "indirect_refusal"
+    ],
+    "intervene_on_turn_in": [
+      1,
+      3
+    ]
+  }
+}

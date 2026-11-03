@@ -1,0 +1,44 @@
+{
+  "id": "gen_term_ambiguity_01",
+  "type": "term_ambiguity",
+  "goal": "explain",
+  "generated": true,
+  "setting": "contractor and homeowner",
+  "intended_message": "The structural beam above the patio door is rotted and needs to be replaced.",
+  "turns": [
+    {
+      "speaker": "wearer",
+      "text": "Hey Lisa, I checked under the deck, that header over your patio door is rotted clean through.",
+      "t_start": 0.0,
+      "t_end": 6.8
+    },
+    {
+      "speaker": "counterpart",
+      "text": "Sorry, header? Do you mean like the trim on top of the door? ",
+      "t_start": 7.3,
+      "t_end": 12.5
+    },
+    {
+      "speaker": "wearer",
+      "text": "No, I mean the actual beam holding the weight above the door, it's all water damaged.",
+      "t_start": 13.0,
+      "t_end": 19.4
+    },
+    {
+      "speaker": "counterpart",
+      "text": "Oh okay, so you'd have to pull that beam and put a new one in?",
+      "t_start": 19.9,
+      "t_end": 25.9
+    }
+  ],
+  "expect": {
+    "should_intervene": true,
+    "mismatch_type": [
+      "term_ambiguity"
+    ],
+    "intervene_on_turn_in": [
+      1,
+      3
+    ]
+  }
+}
