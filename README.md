@@ -28,7 +28,9 @@ pytest -q
 python scripts/eval_scenarios.py              # offline loop: rules + template interpreter
 export LLAMA_API_KEY=...                      # Meta Muse API key
 python scripts/smoke_muse.py                  # verifies the key, prints cost per call
-python scripts/eval_scenarios.py --muse       # full loop with Muse Spark as interpreter
+python scripts/eval_scenarios.py --muse       # two-tier loop: fixed cues + Muse Spark when evidence accumulates
+python scripts/eval_scenarios.py --muse --realtime --partials 2   # paced replay: Tier 1 timing incl. speculative start
+python scripts/eval_scenarios.py --muse --tier1-always            # ablation: Muse on every nomination
 uvicorn common_ground.server.app:app --port 8000
 python scripts/replay_session.py ../fixtures/scenarios/polite_confusion_01.json   # what the phone sees
 ```
@@ -41,9 +43,12 @@ counterpart: Yeah, that makes sense.
 wearer:      Great. Rollout takes about two weeks.
 counterpart: Sure. So would we have to replace everything we have now?
                  ↳ rules: agreement words + clarification question  → nominate POLITE_CONFUSION
-                 ↳ Muse: "integration" likely heard as "replacement"; alt: checking a constraint
-                 ↳ earpiece: "Ask them to restate"
-                 ↳ phone:    "Say what stays unchanged, then ask if that matches what they heard."
+                 ↳ earpiece, ~0.7 s later (Tier 0, fixed vocabulary): "Ask them to restate"
+                 ↳ evidence accumulator: first sign of trouble → not yet worth a model call
+                 ... if the pattern sustains (or a cue fails), Tier 1 runs in the background:
+                 ↳ Muse Spark, streamed: "integration" likely heard as "replacement"
+                 ↳ earpiece at the next pause: "Check their picture"
+                 ↳ phone: "Say what stays unchanged, then ask if that matches what they heard."
 counterpart: Oh, so it sits next to what we already run. Fine.
                  ↳ outcome: RESOLVED (success test met on the next turn)
 ```

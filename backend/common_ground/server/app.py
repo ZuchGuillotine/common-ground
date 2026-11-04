@@ -151,6 +151,7 @@ async def ws_session(ws: WebSocket):
             elif cm.type == "assign_speaker" and cm.speaker_map:
                 pipe.assign_speakers(cm.speaker_map)
             elif cm.type == "stop":
+                await coach.drain()
                 await emit("metrics", {**coach.metrics.summary(), "pipeline_latency": pipe.latency_log[-20:]})
                 break
     except WebSocketDisconnect:

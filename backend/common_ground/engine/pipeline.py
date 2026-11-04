@@ -77,12 +77,30 @@ class Pipeline:
         self.speaker_map[label] = "wearer" if "wearer" not in self.speaker_map.values() else "counterpart"
         return self.speaker_map[label]
 
+    def guess_partial_speaker(self, label: Optional[str]) -> Speaker:
+        """Who is speaking during a partial. In DIARIZATION mode the `speaker` event arrives only at the END
+        of a turn, so a partial still carries the previous turn's label (verified live). Use the alternation
+        prior instead: the person who did not speak last. Wrong for back-to-back turns by one speaker, which
+        the final transcript corrects (a speculative Tier 1 call is then discarded)."""
+        last = self.coach.graph.last_turn()
+        if last is None or last.speaker == "unknown":
+            return self.map_speaker(label)
+        return "counterpart" if last.speaker == "wearer" else "wearer"
+
+    async def on_partial_text(self, speaker: Speaker, text: str, t_start: float, t_now: float) -> None:
+        """A partial transcript for the current turn (cumulative text). Cheap: rules only."""
+        async with self._lock:
+            ling = self.linguistic.analyze(text, speaker, self.coach.graph.turns) if speaker == "counterpart" else None
+            await self.coach.on_partial(speaker, text, t_start, t_now, ling)
+
     # ------------------------------------------------------- transcript in
     async def on_transcript_event(self, ev: Any) -> Optional[Turn]:
         """ev: muse.transcribe.TranscriptEvent (duck-typed: kind, text, speaker_label, t_start, t_end)."""
         if ev.kind == "partial":
             self._partials[ev.speaker_label or "?"] = ev.text
-            await self.coach.emit("transcript", {"speaker": self.map_speaker(ev.speaker_label), "text": ev.text, "final": False})
+            speaker = self.guess_partial_speaker(ev.speaker_label)
+            await self.coach.emit("transcript", {"speaker": speaker, "text": ev.text, "final": False})
+            await self.on_partial_text(speaker, ev.text, ev.t_start, ev.t_end)
             return None
         if ev.kind in ("final", "turn_end") and ev.text and ev.text.strip():
             self._partials.pop(ev.speaker_label or "?", None)

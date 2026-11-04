@@ -94,6 +94,20 @@ VERIFIED: `json_schema.name` **is required**; without it the API returns HTTP 40
 `` `response_format` missing required field `name` ``. A `title` key inside the schema itself is accepted.
 The returned `content` is compact JSON exactly matching the schema (e.g. `{"answer":"Paris","confidence":1}`).
 
+VERIFIED: **keys are emitted in alphabetical order, not schema order.** A schema declared as
+`intervene, strategy, earpiece_cue, suggestion, note` streamed back as `earpiece_cue, intervene, note,
+strategy, suggestion`. To get fields early in a stream, name them so they sort first (the interpreter
+uses `act`, `cue`, `how` ahead of `say`, `sure`, `test`, `type`). `description` keys in the schema are accepted.
+
+### Streaming (VERIFIED, used by `MuseChat.stream`)
+
+`"stream": true, "stream_options": {"include_usage": true}` returns `text/event-stream`. Each event is
+`data: {"id":..,"choices":[{"delta":{"content":"..."},"finish_reason":null,"index":0}],...}`; the first
+delta also carries `"role":"assistant"`; the last choice chunk has `"delta":{}`, `"finish_reason":"stop"`
+and the `usage` object; then `data: [DONE]`. Reasoning is **not** streamed: nothing arrives between the
+headers (~2 s) and the first visible token (~3.5-5 s), so time-to-first-token is not improved by streaming,
+only the tail is. No `reasoning_content`/`reasoning` delta keys were ever seen.
+
 ### Errors and retries
 
 Source: https://dev.meta.ai/docs/error-handling

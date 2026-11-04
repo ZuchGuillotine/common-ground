@@ -32,6 +32,12 @@ class ConversationGraph:
     def next_turn_id(self) -> int:
         return len(self.turns)
 
+    def with_provisional(self, turn: Turn) -> "ConversationGraph":
+        """A read-only view with `turn` appended (for a Tier 1 call started on a partial transcript)."""
+        g = ConversationGraph(self.session_id)
+        g.turns, g.events = [*self.turns, turn], self.events
+        return g
+
     def recent(self, n: int = 8) -> list[Turn]:
         return self.turns[-n:]
 

@@ -220,3 +220,81 @@ Per-call cost of one structured interpreter call at `minimal`: ≈ $0.0026 (≈ 
    last-byte → final goes negative when a clip ends in silence.
 6. **Tests**: `tests/test_muse_mock.py` updated for the new request shape; added tests for the budget-exhausted
    retry and the end-of-stream marker (39 pass).
+
+
+---
+
+# Update 2026-11-04: two-tier coaching (fixed cues + evidence-gated, streamed, speculative Muse)
+
+The 5-7 s interpreter call measured above sat between the counterpart's last word and the wearer's next
+one. This update takes it off that path. Code: `engine/evidence.py` (new), `engine/coach.py`,
+`engine/interpreter.py`, `engine/pipeline.py`, `muse/chat.py` (`stream`), `scripts/eval_scenarios.py`
+(`--partials`, `--realtime`, `--tier1-always`). 55 unit tests pass (12 new in `tests/test_engine_tiers.py`).
+
+## What changed
+
+| Piece | Before | Now |
+|---|---|---|
+| Every nomination | one Muse call, cue after it returns (p50 5.5 s) | **Tier 0**: fixed-vocabulary cue (`CUE_VOCABULARY`, six 2-4 word cues from the templates) emitted immediately, no model |
+| When Muse runs | always | **Tier 1**: only when `EvidenceAccumulator` fires: accumulated score >= 1.0 (nominations add their rule score, +0.2 for a repeated type, x0.5 decay per quiet turn, +0.6 when a cue is judged unresolved) or a single nomination >= 0.9 (e.g. a question asked for the third time) |
+| How Muse runs | awaited inline | background task; cue delivered at the next listening window (nobody speaking), dropped if > 8 s old or two counterpart turns later; outcome judging waits at most 50 ms inline then continues in the background |
+| Request | 690-token prompt, 11 fields, non-streamed | 6-turn context, 7 short fields, streamed; the earpiece fires on the first three fields |
+| Field order | assumed schema order | **Muse emits keys alphabetically** (verified live), so the early fields are named `act`, `cue`, `how` and sort ahead of `say`, `sure`, `test`, `type` |
+| Start time | at the final transcript | **speculative**: on a counterpart partial, when the rules already nominate and the accumulator would escalate; kept only if the final transcript has the same nomination and compatible text (prefix or >= 80 % token overlap) |
+
+What streaming buys is small and precisely measured: reasoning is not streamed, so nothing arrives
+between the headers (~2 s) and the first visible token; the early fields then land 0.2-0.4 s before the
+full object. The real wins are not waiting for the model at all (Tier 0) and starting it earlier
+(speculation).
+
+## Quality, unpaced replay (Tier 1 allowed to finish before the next turn)
+
+| set | metric | rules-only | Muse (evidence-gated) |
+|---|---|---|---|
+| hand-authored (14) | false intervention / detection / type acc | 0.0 / 1.0 / 1.0 | 0.0 / 1.0 / 1.0 |
+| hand-authored | Tier 0 cues / Tier 1 calls / Tier 1 cues | 10 / 1 / 1 | 10 / 1 / 1 |
+| hand-authored | Muse cost | – | $0.0072 |
+| generated (12) | false intervention / detection / type acc | 0.0 / 1.0 / 0.8 | 0.0 / 1.0 / 0.8 |
+| generated | Tier 0 cues / Tier 1 calls / Tier 1 cues | 13 / 2 / 2 | 13 / 3 / 3 |
+| generated | Muse cost | – | $0.0302 |
+
+Type accuracy is scored at the first intervention moment, which is now the deterministic Tier 0 cue in
+every scenario, so rules and Muse tie by construction; the two generated escalating-friction fixtures
+fail for both as before (the rules nominate term ambiguity on turn 1, before the friction pattern exists).
+Tier 1 fired on the sustained cases only: `indirect_refusal_01` (two refusals in a row), and on the
+generated set the second nominations in `gen_escalating_friction_00` and `gen_indirect_refusal_00`.
+Muse's Tier 1 cues there: "Invite a no" / "Would it be a problem to decline Friday?", "Ask what's unclear".
+
+## Timing, paced replay (`--realtime --speed 1.5 --tier1-always`, hand-authored set, 8 s stale cut-off)
+
+`--tier1-always` forces a Muse call on every nomination so there are nine calls to time; `ready` is the
+wall time from the trigger turn's end to the Tier 1 cue being delivered (Tier 0 is always ~0 here).
+
+| run | Tier 1 calls / cues / silent / dropped | call p50 / p95 | early fields p50 | **ready after turn p50 / p95** | speculative started / kept / discarded |
+|---|---|---|---|---|---|
+| no partials | 9 / 7 / 2 / 0 | 3.69 / 6.18 s | 3.46 s | **3.42 / 5.90 s** | 0 / 0 / 0 |
+| `--partials 2` | 9 / 6 / 2 / 1 | 4.31 / 7.00 s | 4.20 s | **3.20 / 4.61 s** | 5 / 5 / 0 |
+
+Per scenario, ready-after-turn (s), no partials -> with partials: jargon_01 2.74 -> 1.94, indirect_refusal_02
+3.64 -> 2.39, polite_confusion_01 5.38 -> 4.61, escalation_01 2.95 -> 3.81 (the call itself was 1.4 s
+slower), genuine_disagreement_02 5.90 -> silent. Where speculation fired it saved 0.8-1.3 s at 1.5x
+playback, i.e. roughly 1.2-1.9 s at real speed, and every speculative call was confirmed by the final
+transcript. It did not fire when the nominating signal only appears at the end of the turn (the question
+mark, the hedging clause); with two coarse partials per turn in the harness that was 4 of 9 cases. Live
+partials arrive every 160-400 ms, so coverage should be better than the harness shows.
+
+Both runs cost ~$0.030. Across all runs today Muse spend was ≈ $0.14 (session total ≈ $0.69).
+
+## Where the time goes now, and what is left
+
+| moment | time after the counterpart stops speaking |
+|---|---|
+| Voice Transcribe final text | ~0.6 s |
+| **Tier 0 cue in the earpiece** | **~0.7 s** |
+| Tier 1 cue, when it runs | 3.2 s p50, 4.6 s p95 (with speculation), delivered at the next pause |
+
+The remaining term is the model itself: 3.1-7.0 s per call at `reasoning_effort=minimal`, with the
+variance coming from hidden reasoning tokens (210-500 on this prompt). Nothing in the API shortens that
+further for Spark. The product consequence is the one the design assumes: Tier 0 is the always-on
+signal, Tier 1 is for the occasional sustained moment, and its sentence is meant for the next pause, not
+the next breath.

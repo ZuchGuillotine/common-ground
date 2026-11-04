@@ -51,7 +51,7 @@ TEMPLATES: dict[MismatchType, Optional[Intervention]] = {
 class FallbackInterpreter:
     """Same interface as engine.interpreter.Interpreter, no network."""
 
-    async def interpret(self, cfg: SessionConfig, graph: ConversationGraph, nom: Nomination):
+    async def interpret(self, cfg: SessionConfig, graph: ConversationGraph, nom: Nomination, *, on_early=None):
         hyp = Hypothesis(type=nom.type, summary=nom.reason, evidence_turns=nom.evidence_turns,
                          certainty="tentative" if nom.score < 0.7 else "moderate",
                          alternatives=[a.value for a in nom.alternatives])

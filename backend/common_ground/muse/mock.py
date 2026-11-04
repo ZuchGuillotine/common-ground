@@ -51,6 +51,21 @@ class MockMuseChat:
         return extract_json(await self.complete(messages, model=model, json_schema=json_schema,
                                                 max_tokens=max_tokens, temperature=temperature))
 
+    async def stream(self, messages: list[Message], *, model: str | None = None,
+                     json_schema: dict | None = None, max_tokens: int = 1024,
+                     temperature: float | None = None) -> AsyncIterator[str]:
+        """Same text as `complete`, delivered in ~3 chunks so early-prefix parsers can be exercised."""
+        self.calls.append({"messages": messages, "json_schema": json_schema, "model": model or self.model,
+                           "stream": True})
+        value = self._pick(messages, json_schema)
+        text = value if isinstance(value, str) else json.dumps(value)
+        n_in = sum(len(str(m.get("content", ""))) for m in messages) // 4
+        self.usage.add(n_in, len(text) // 4, price_for(model or self.model))
+        step = max(1, -(-len(text) // 3))
+        for i in range(0, len(text), step):
+            await asyncio.sleep(0)
+            yield text[i:i + step]
+
 
 class MockMuseTranscribe:
     """Replays scripted turns [{"speaker": "S0", "text": ..., "t_start": .., "t_end": ..}, ...] as

@@ -68,6 +68,10 @@ class ChatClient(Protocol):
                             json_schema: dict | None = None, max_tokens: int = 1024,
                             temperature: float | None = None) -> dict: ...
 
+    def stream(self, messages: list[Message], *, model: str | None = None,
+               json_schema: dict | None = None, max_tokens: int = 1024,
+               temperature: float | None = None) -> AsyncIterator[str]: ...
+
 
 @runtime_checkable
 class TranscribeClient(Protocol):

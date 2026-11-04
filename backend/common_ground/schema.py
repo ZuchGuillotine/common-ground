@@ -164,6 +164,8 @@ class ClientMessage(BaseModel):
 
 class ServerMessage(BaseModel):
     """Server -> phone."""
-    type: Literal["transcript", "turn", "state", "cue", "graph_event", "error", "metrics"]
+    # cue: {tier: 0|1, turn_id, earpiece_cue, suggestion, strategy, success_test, hypothesis}; a Tier 1 cue may
+    # arrive with an empty suggestion, completed by a cue_detail message once the model's stream finishes.
+    type: Literal["transcript", "turn", "state", "cue", "cue_detail", "graph_event", "error", "metrics"]
     payload: dict = Field(default_factory=dict)
     t: float

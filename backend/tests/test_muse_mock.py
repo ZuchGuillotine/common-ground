@@ -232,3 +232,77 @@ def test_normaliser_ignores_end_of_stream_final_marker():
     evs = n.feed({"type": "speechComplete", "audioProcessedMs": 700, "turnId": 0, "transcript": " hi "})
     assert [e.kind for e in evs] == ["final", "turn_end"] and evs[0].speaker_label == "S0"
     assert n.feed({"type": "transcript", "transcript": "", "final": True, "audioProcessedMs": 1300}) == []
+
+
+# ------------------------------------------------------------------ streaming
+def _sse(*chunks: dict) -> bytes:
+    return "".join(f"data: {json.dumps(c)}\n\n" for c in chunks).encode() + b"data: [DONE]\n\n"
+
+
+async def test_muse_chat_stream_yields_deltas_and_meters_usage():
+    bodies: list[dict] = []
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        bodies.append(json.loads(req.content))
+        return httpx.Response(200, headers={"content-type": "text/event-stream"}, content=_sse(
+            {"choices": [{"index": 0, "delta": {"role": "assistant", "content": '{"answer'}, "finish_reason": None}]},
+            {"choices": [{"index": 0, "delta": {"content": '": "Par'}, "finish_reason": None}]},
+            {"choices": [{"index": 0, "delta": {"content": 'is"}'}, "finish_reason": "stop"}]},
+            {"choices": [], "usage": {"prompt_tokens": 10, "completion_tokens": 30, "total_tokens": 40,
+                                      "completion_tokens_details": {"reasoning_tokens": 20}}}))
+
+    chat = MuseChat(api_key="k", client=httpx.AsyncClient(transport=httpx.MockTransport(handler)))
+    deltas = [d async for d in chat.stream([{"role": "user", "content": "Capital of France?"}],
+                                           json_schema={"title": "Answer", "type": "object"}, max_tokens=32)]
+    assert deltas == ['{"answer', '": "Par', 'is"}'] and "".join(deltas) == '{"answer": "Paris"}'
+    body = bodies[0]
+    assert body["stream"] is True and body["stream_options"] == {"include_usage": True}
+    assert body["response_format"]["json_schema"]["name"] == "Answer"
+    assert (chat.usage.input_tokens, chat.usage.output_tokens, chat.usage.calls) == (10, 30, 1)
+
+
+async def test_muse_chat_stream_budget_exhausted_retries_minimal_then_errors():
+    from common_ground.muse.chat import REASONING_HEADROOM_TOKENS
+    bodies: list[dict] = []
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        bodies.append(json.loads(req.content))
+        return httpx.Response(200, headers={"content-type": "text/event-stream"}, content=_sse(
+            {"choices": [{"index": 0, "delta": {"role": "assistant"}, "finish_reason": "length"}]},
+            {"choices": [], "usage": {"prompt_tokens": 15, "completion_tokens": 64, "total_tokens": 79,
+                                      "completion_tokens_details": {"reasoning_tokens": 64}}}))
+
+    chat = MuseChat(api_key="k", reasoning_effort="low",
+                    client=httpx.AsyncClient(transport=httpx.MockTransport(handler)))
+    with pytest.raises(MuseChatError, match="budget exhausted"):
+        async for _ in chat.stream([{"role": "user", "content": "hi"}], max_tokens=64):
+            pytest.fail("nothing should be yielded")
+    assert [b["reasoning_effort"] for b in bodies] == ["low", "minimal"]
+    assert bodies[1]["max_completion_tokens"] == 2 * (64 + REASONING_HEADROOM_TOKENS)
+    assert chat.usage.calls == 2
+
+
+async def test_muse_chat_stream_truncated_after_text_raises_without_retry():
+    calls = 0
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return httpx.Response(200, headers={"content-type": "text/event-stream"}, content=_sse(
+            {"choices": [{"index": 0, "delta": {"content": '{"a": "b'}, "finish_reason": "length"}]}))
+
+    chat = MuseChat(api_key="k", client=httpx.AsyncClient(transport=httpx.MockTransport(handler)))
+    got = []
+    with pytest.raises(MuseChatError, match="truncated"):
+        async for d in chat.stream([{"role": "user", "content": "hi"}]):
+            got.append(d)
+    assert got == ['{"a": "b'] and calls == 1
+
+
+async def test_mock_muse_chat_stream_chunks_join_to_json():
+    from common_ground.muse import MockMuseChat
+    mock = MockMuseChat(default={"intervene": True, "strategy": "ask_check_question", "earpiece_cue": "Ask them"})
+    chunks = [c async for c in mock.stream([{"role": "user", "content": "x"}], json_schema={"title": "T"})]
+    assert len(chunks) >= 2
+    assert json.loads("".join(chunks))["earpiece_cue"] == "Ask them"
+    assert mock.calls[-1]["stream"] is True and mock.usage.calls == 1

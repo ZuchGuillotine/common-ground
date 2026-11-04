@@ -11,6 +11,7 @@ import json
 import os
 import random
 import re
+from collections.abc import AsyncIterator
 from typing import Any, Self
 
 import httpx
@@ -129,9 +130,9 @@ class MuseChat:
                                     temperature=temperature, reasoning_effort="minimal",
                                     headroom=2 * REASONING_HEADROOM_TOKENS + max_tokens)
 
-    async def _complete(self, messages: list[Message], *, model: str | None, json_schema: dict | None,
-                        max_tokens: int, temperature: float | None, reasoning_effort: str | None,
-                        headroom: int = REASONING_HEADROOM_TOKENS) -> str:
+    def _body(self, messages: list[Message], *, model: str | None, json_schema: dict | None,
+              max_tokens: int, temperature: float | None, reasoning_effort: str | None,
+              headroom: int) -> dict[str, Any]:
         body: dict[str, Any] = {
             "model": model or self.model,
             "messages": messages,
@@ -147,6 +148,108 @@ class MuseChat:
                 "type": "json_schema",
                 "json_schema": {"name": json_schema.get("title", "Output"), "schema": json_schema},
             }
+        return body
+
+    async def stream(self, messages: list[Message], *, model: str | None = None,
+                     json_schema: dict | None = None, max_tokens: int = 1024,
+                     temperature: float | None = None) -> AsyncIterator[str]:
+        """Yield visible output text as it arrives (`choices[0].delta.content` of each SSE chunk).
+
+        Reasoning is NOT streamed by the API: the first chunk arrives only after the hidden reasoning
+        phase. Budget exhaustion before any visible text is retried once exactly like `complete()`;
+        truncation after text has been yielded raises after the yielded text (it cannot be un-yielded).
+        """
+        yielded = False
+        try:
+            async for delta in self._stream(messages, model=model, json_schema=json_schema, max_tokens=max_tokens,
+                                            temperature=temperature, reasoning_effort=self.reasoning_effort):
+                yielded = True
+                yield delta
+            return
+        except MuseChatError as e:
+            if yielded or not e.budget_exhausted:
+                raise
+        async for delta in self._stream(messages, model=model, json_schema=json_schema, max_tokens=max_tokens,
+                                        temperature=temperature, reasoning_effort="minimal",
+                                        headroom=2 * REASONING_HEADROOM_TOKENS + max_tokens):
+            yield delta
+
+    async def _stream(self, messages: list[Message], *, model: str | None, json_schema: dict | None,
+                      max_tokens: int, temperature: float | None, reasoning_effort: str | None,
+                      headroom: int = REASONING_HEADROOM_TOKENS) -> AsyncIterator[str]:
+        body = self._body(messages, model=model, json_schema=json_schema, max_tokens=max_tokens,
+                          temperature=temperature, reasoning_effort=reasoning_effort, headroom=headroom)
+        body["stream"] = True
+        body["stream_options"] = {"include_usage": True}   # VERIFIED: usage arrives in the last chunk
+        headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
+        url = self.base_url + CHAT_COMPLETIONS_PATH
+        last: MuseChatError | None = None
+        for attempt in range(MAX_RETRIES + 1):
+            try:
+                async with self._client.stream("POST", url, headers=headers, json=body) as r:
+                    if r.status_code >= 400:
+                        await r.aread()
+                        last = MuseChatError(f"HTTP {r.status_code} from {CHAT_COMPLETIONS_PATH}: "
+                                             f"{_err_message(r)}", status=r.status_code, body=_safe_json(r))
+                        if r.status_code not in RETRY_STATUSES:
+                            raise last
+                    else:
+                        async for delta in self._consume_sse(r, body, reasoning_effort):
+                            yield delta
+                        return
+            except httpx.HTTPError as e:
+                last = MuseChatError(f"network error: {e}")
+            if attempt < MAX_RETRIES:
+                await asyncio.sleep(_backoff(attempt, last))
+        assert last is not None
+        raise last
+
+    async def _consume_sse(self, r: httpx.Response, body: dict, reasoning_effort: str | None) -> AsyncIterator[str]:
+        finish: str | None = None
+        usage: dict = {}
+        yielded = False
+        async for line in r.aiter_lines():
+            line = line.strip()
+            if not line.startswith("data:"):
+                continue            # comments / blank keep-alives
+            payload = line[5:].strip()
+            if payload == "[DONE]":
+                break
+            try:
+                chunk = json.loads(payload)
+            except json.JSONDecodeError:
+                continue
+            if chunk.get("usage"):
+                usage = chunk["usage"]
+            for choice in chunk.get("choices") or []:
+                delta = (choice.get("delta") or {}).get("content")
+                if isinstance(delta, list):
+                    delta = "".join(p.get("text", "") for p in delta if isinstance(p, dict))
+                if delta:
+                    yielded = True
+                    yield delta
+                if choice.get("finish_reason"):
+                    finish = choice["finish_reason"]
+        self.usage.add(int(usage.get("prompt_tokens", 0)), int(usage.get("completion_tokens", 0)),
+                       price_for(body["model"]))
+        if finish == "length":
+            details = usage.get("completion_tokens_details") or {}
+            if not yielded:
+                err = MuseChatError(
+                    f"output budget exhausted before any visible text (max_completion_tokens="
+                    f"{body['max_completion_tokens']}, reasoning_effort={reasoning_effort}, "
+                    f"reasoning_tokens={details.get('reasoning_tokens')}); raise max_tokens or lower "
+                    f"reasoning_effort", body=usage)
+                err.budget_exhausted = True
+                raise err
+            raise MuseChatError(f"output truncated at max_completion_tokens={body['max_completion_tokens']} "
+                                f"(reasoning_tokens={details.get('reasoning_tokens')})", body=usage)
+
+    async def _complete(self, messages: list[Message], *, model: str | None, json_schema: dict | None,
+                        max_tokens: int, temperature: float | None, reasoning_effort: str | None,
+                        headroom: int = REASONING_HEADROOM_TOKENS) -> str:
+        body = self._body(messages, model=model, json_schema=json_schema, max_tokens=max_tokens,
+                          temperature=temperature, reasoning_effort=reasoning_effort, headroom=headroom)
         data = await self._request("POST", CHAT_COMPLETIONS_PATH, body)
         usage = data.get("usage") or {}
         self.usage.add(int(usage.get("prompt_tokens", 0)), int(usage.get("completion_tokens", 0)),
